@@ -23,9 +23,8 @@ class OnboardingActivity : AppCompatActivity() {
                 .putLong("consent_at", System.currentTimeMillis())
                 .apply()
 
-            // Ir a crear el PIN maestro.
-            startActivity(Intent(this, PinActivity::class.java)
-                .putExtra(PinActivity.EXTRA_MODE, PinActivity.MODE_SETUP))
+            // Volver a la principal, que enruta a crear el PIN maestro.
+            startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
     }

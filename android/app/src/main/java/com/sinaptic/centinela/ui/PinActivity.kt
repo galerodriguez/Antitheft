@@ -101,6 +101,8 @@ class PinActivity : AppCompatActivity() {
         if (mode == MODE_VERIFY) {
             setResult(RESULT_OK); finish()
         } else {
+            // SETUP o UNLOCK: marcamos el desbloqueo del proceso y volvemos a la principal.
+            MainActivity.unlockedThisProcess = true
             startActivity(Intent(this, MainActivity::class.java))
             finish()
         }
@@ -115,11 +117,12 @@ class PinActivity : AppCompatActivity() {
         display.text = "•".repeat(entered.length)
     }
 
-    // Bloquear el botón atrás en UNLOCK/VERIFY para no saltear el PIN.
+    // El botón atrás no debe saltear el PIN: en SETUP/UNLOCK manda la app a segundo plano.
     override fun onBackPressed() {
-        if (mode == MODE_SETUP) super.onBackPressed()
-        // en UNLOCK/VERIFY, no hacer nada (o mover la app a segundo plano)
-        else moveTaskToBack(true)
+        when (mode) {
+            MODE_VERIFY -> { setResult(RESULT_CANCELED); super.onBackPressed() }
+            else -> moveTaskToBack(true)
+        }
     }
 
     companion object {

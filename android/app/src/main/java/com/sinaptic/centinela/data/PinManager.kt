@@ -53,7 +53,9 @@ class PinManager(context: Context) {
         return r == 0
     }
 
-    private fun ByteArray.toHex() = joinToString("") { "%02x".format(it) }
+    // IMPORTANTE: enmascarar con 0xFF. Un Byte en Kotlin es con signo; sin la máscara, los
+    // bytes >= 0x80 se convertían a 8 caracteres (ffffffXX) en vez de 2, corrompiendo la sal.
+    private fun ByteArray.toHex() = joinToString("") { "%02x".format(it.toInt() and 0xFF) }
     private fun String.fromHex() = chunked(2).map { it.toInt(16).toByte() }.toByteArray()
 
     companion object {

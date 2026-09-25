@@ -10,51 +10,48 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sinaptic.centinela.R
 import com.sinaptic.centinela.admin.CentinelaDeviceAdminReceiver
-import com.sinaptic.centinela.commands.CommandDispatcher
 import com.sinaptic.centinela.data.DeviceRepository
 import com.sinaptic.centinela.data.PinManager
 import com.sinaptic.centinela.location.LocationService
 import com.sinaptic.centinela.sos.SosCommand
 
 /**
- * Pantalla principal: estado, toggles de funciones y botón SOS.
+ * Pantalla principal. Actúa como "puerta de entrada" (router):
  *
- * Ruteo de arranque:
- *   sin consentimiento  -> OnboardingActivity
- *   sin PIN             -> PinActivity (SETUP)
- *   con PIN             -> PinActivity (UNLOCK)  antes de mostrarse
+ *   sin consentimiento        -> OnboardingActivity
+ *   sin PIN (primer uso)      -> PinActivity (SETUP)
+ *   con PIN, no desbloqueado  -> PinActivity (UNLOCK)
+ *   con PIN, desbloqueado     -> muestra la pantalla principal
+ *
+ * El desbloqueo se recuerda a nivel de proceso (unlockedThisProcess). Así se pide el PIN
+ * al abrir la app (arranque en frío) sin caer en bucles. La comprobación se hace UNA vez en
+ * onCreate, no en onStart, que era lo que generaba el bucle anterior.
  */
 class MainActivity : AppCompatActivity() {
 
-    private var unlocked = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-        setupUi()
-    }
 
-    override fun onStart() {
-        super.onStart()
         val prefs = DeviceRepository(this).prefs()
-        val pin = PinManager(this)
 
         // 1) Consentimiento
         if (!prefs.getBoolean("consent_accepted", false)) {
-            startActivity(Intent(this, OnboardingActivity::class.java)); finish(); return
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish(); return
         }
-        // 2) Bloqueo por PIN al abrir
-        if (!unlocked) {
-            val mode = if (pin.isPinSet()) PinActivity.MODE_UNLOCK else PinActivity.MODE_SETUP
+
+        // 2) PIN (crear o desbloquear)
+        if (!unlockedThisProcess) {
+            val mode = if (PinManager(this).isPinSet())
+                PinActivity.MODE_UNLOCK else PinActivity.MODE_SETUP
             startActivity(Intent(this, PinActivity::class.java)
                 .putExtra(PinActivity.EXTRA_MODE, mode))
-            unlocked = true
+            finish(); return
         }
-    }
 
-    override fun onStop() {
-        super.onStop()
-        unlocked = false // vuelve a pedir PIN la próxima vez que se abra
+        // 3) Ya desbloqueado: mostrar la app
+        setContentView(R.layout.activity_main)
+        setupUi()
     }
 
     private fun setupUi() {
@@ -71,15 +68,13 @@ class MainActivity : AppCompatActivity() {
             isChecked = prefs.getBoolean("tracking_enabled", false)
             setOnCheckedChangeListener { _, on ->
                 prefs.edit().putBoolean("tracking_enabled", on).apply()
-                if (on) startTracking() else stopService(Intent(this@MainActivity, LocationService::class.java))
+                if (on) startTracking()
+                else stopService(Intent(this@MainActivity, LocationService::class.java))
             }
         }
 
         findViewById<Button>(R.id.btnDeviceAdmin).setOnClickListener { requestDeviceAdmin() }
-
-        findViewById<Button>(R.id.btnSos).setOnClickListener {
-            SosCommand(this).trigger()
-        }
+        findViewById<Button>(R.id.btnSos).setOnClickListener { SosCommand(this).trigger() }
     }
 
     private fun startTracking() {
@@ -97,5 +92,11 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.device_admin_explanation))
         }
         startActivity(intent)
+    }
+
+    companion object {
+        /** Recordamos que el usuario ya se desbloqueó en esta ejecución de la app. */
+        @JvmStatic
+        var unlockedThisProcess = false
     }
 }
