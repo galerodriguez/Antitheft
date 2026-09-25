@@ -1,0 +1,433 @@
+<title>Panel Antitheft</title>
+<meta name="description" content="Portal para controlar tus dispositivos Antitheft: activar funciones, localizar, bloquear y ver el historial de ubicaciones." />
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --card-2: #f0f2f5; --border: #e1e4e8;
+    --text: #1f2328; --muted: #656d76; --primary: #1f6feb; --primary-ink: #ffffff;
+    --danger: #cf222e; --good: #1a7f37;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+    color-scheme: light;
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --bg: #0d1117; --card: #161b22; --card-2: #1c222b; --border: #30363d;
+      --text: #e6edf3; --muted: #8b949e; --primary: #4c8dff; --primary-ink: #0b1220;
+      --danger: #ff7b72; --good: #3fb950;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1117; --card: #161b22; --card-2: #1c222b; --border: #30363d;
+    --text: #e6edf3; --muted: #8b949e; --primary: #4c8dff; --primary-ink: #0b1220;
+    --danger: #ff7b72; --good: #3fb950;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Manrope", system-ui, -apple-system, sans-serif; line-height: 1.5; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
+  a { color: var(--primary); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding-inline: 16px; }
+
+  header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 500;
+    background: var(--bg); border-bottom: 1px solid var(--border); }
+  .bar { display: flex; align-items: center; gap: 12px; padding-block: 14px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 18px; }
+  .brand svg { width: 26px; height: 26px; color: var(--primary); }
+  .spacer { flex: 1; }
+  .who { color: var(--muted); font-size: 13px; }
+
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); padding: 9px 14px; transition: border-color .15s; }
+  button:hover { border-color: var(--primary); }
+  button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .btn-primary { background: var(--primary); color: var(--primary-ink); border-color: var(--primary); font-weight: 600; }
+  .btn-danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); }
+  .btn-ghost { background: transparent; }
+
+  .login { min-height: 70vh; display: grid; place-items: center; }
+  .login-card { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; box-shadow: var(--shadow); }
+  .login-card h1 { font-size: 22px; margin-bottom: 4px; }
+  .login-card p { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 5px; }
+  input { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card-2); color: var(--text); font: inherit; }
+  input:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .row-btns { display: grid; gap: 10px; margin-top: 18px; }
+  .msg { font-size: 13px; margin-top: 12px; min-height: 18px; }
+  .msg.err { color: var(--danger); }
+
+  .app { display: grid; grid-template-columns: 300px 1fr; gap: 20px; padding-block: 22px; }
+  @media (max-width: 760px) { .app { grid-template-columns: 1fr; } }
+
+  .section-label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+    margin-bottom: 8px; margin-top: 18px; }
+  .section-label:first-child { margin-top: 0; }
+
+  .device { width: 100%; text-align: left; display: block; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 13px 15px; margin-bottom: 10px; }
+  .device.active { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary) inset; }
+  .device .name { font-weight: 700; }
+  .device .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); }
+  .panel h2 { font-size: 18px; }
+  .panel .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+  .toggle-row { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .toggle-row.first { border-top: none; }
+  .toggle-row .txt { flex: 1; }
+  .toggle-row .txt .t { font-weight: 600; }
+  .toggle-row .txt .d { font-size: 12.5px; color: var(--muted); }
+
+  .switch { position: relative; width: 46px; height: 27px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--card-2); border: 1px solid var(--border);
+    border-radius: 999px; transition: .2s; }
+  .slider::before { content: ""; position: absolute; height: 19px; width: 19px; left: 3px; top: 3px;
+    background: var(--muted); border-radius: 50%; transition: .2s; }
+  .switch input:checked + .slider { background: color-mix(in srgb, var(--primary) 30%, transparent); border-color: var(--primary); }
+  .switch input:checked + .slider::before { transform: translateX(19px); background: var(--primary); }
+
+  .statusrow { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip { display: inline-block; font-size: 13px; padding: 4px 10px; border-radius: 999px;
+    background: var(--card-2); border: 1px solid var(--border); }
+  .chip-when { font-size: 12px; color: var(--muted); }
+  .cmds { display: flex; flex-wrap: wrap; gap: 10px; }
+  #map { height: 300px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-top: 4px;
+    background: var(--card-2); }
+  .leaflet-container { font-family: inherit; }
+
+  .history { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .hist-item { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; cursor: pointer;
+    border-top: 1px solid var(--border); font-size: 13px; }
+  .hist-item:first-child { border-top: none; }
+  .hist-item:hover { background: var(--card-2); }
+  .hist-item .when { color: var(--text); }
+  .hist-item .co { color: var(--muted); }
+
+  .empty { color: var(--muted); text-align: center; padding: 40px 16px; }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-app-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<header>
+  <div class="wrap bar">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
+      Antitheft
+    </div>
+    <div class="spacer"></div>
+    <span id="who" class="who" hidden></span>
+    <button id="btnLogout" class="btn-ghost" hidden>Salir</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="loginView" class="login" hidden>
+    <div class="login-card">
+      <h1>Panel Antitheft</h1>
+      <p>Ingresá con la misma cuenta que usás en la app para controlar tus dispositivos.</p>
+      <label for="email">Correo electrónico</label>
+      <input id="email" type="email" autocomplete="email" placeholder="vos@ejemplo.com" />
+      <label for="pass">Contraseña</label>
+      <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••" />
+      <div class="row-btns">
+        <button id="btnSignIn" class="btn-primary">Ingresar</button>
+        <button id="btnRegister" class="btn-ghost">Crear cuenta nueva</button>
+      </div>
+      <div id="loginMsg" class="msg"></div>
+    </div>
+  </section>
+
+  <section id="appView" class="app" hidden>
+    <aside>
+      <div class="section-label">Dispositivos</div>
+      <div id="deviceList"></div>
+    </aside>
+    <div id="detailWrap">
+      <div class="panel"><div class="empty">Elegí un dispositivo de la izquierda.</div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAAbX-b6eY5-mkn2XpNViyG7_jJ1ngQnQg",
+    authDomain: "antitheft-2b140.firebaseapp.com",
+    projectId: "antitheft-2b140",
+    storageBucket: "antitheft-2b140.firebasestorage.app",
+    messagingSenderId: "760057514633",
+    appId: "1:760057514633:android:b30827d61c5f4a62dd9458"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+  const $ = (id) => document.getElementById(id);
+
+  let devicesUnsub = null, deviceUnsub = null, locUnsub = null, selectedId = null;
+  let map = null, lastMarker = null, trackLine = null, histMarkers = [];
+
+  // ---- Auth ----
+  $("btnSignIn").onclick = () => doAuth(false);
+  $("btnRegister").onclick = () => doAuth(true);
+  $("btnLogout").onclick = () => auth.signOut();
+
+  function doAuth(register) {
+    const email = $("email").value.trim(), pass = $("pass").value;
+    if (!email || pass.length < 6) return setMsg("Ingresá un correo válido y una contraseña de 6+ caracteres.", "err");
+    setMsg("Conectando…", "");
+    (register ? auth.createUserWithEmailAndPassword(email, pass) : auth.signInWithEmailAndPassword(email, pass))
+      .catch((e) => setMsg(traducir(e.code) || e.message, "err"));
+  }
+  function setMsg(t, cls) { $("loginMsg").textContent = t; $("loginMsg").className = "msg " + (cls || ""); }
+  function traducir(code) {
+    return ({
+      "auth/invalid-email": "El correo no es válido.",
+      "auth/invalid-credential": "Correo o contraseña incorrectos.",
+      "auth/wrong-password": "Contraseña incorrecta.",
+      "auth/user-not-found": "No existe una cuenta con ese correo. Probá 'Crear cuenta nueva'.",
+      "auth/email-already-in-use": "Ya existe una cuenta con ese correo. Probá 'Ingresar'.",
+      "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
+      "auth/network-request-failed": "Sin conexión. Revisá tu internet.",
+      "auth/operation-not-allowed": "Falta habilitar 'Correo/contraseña' en Firebase Authentication."
+    })[code];
+  }
+
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      $("loginView").hidden = true; $("appView").hidden = false;
+      $("who").hidden = false; $("who").textContent = user.email; $("btnLogout").hidden = false;
+      watchDevices(user.uid);
+    } else {
+      $("appView").hidden = true; $("loginView").hidden = false;
+      $("who").hidden = true; $("btnLogout").hidden = true;
+      [devicesUnsub, deviceUnsub, locUnsub].forEach(u => u && u());
+      selectedId = null; $("email").value = ""; $("pass").value = ""; setMsg("", "");
+    }
+  });
+
+  // ---- Dispositivos ----
+  function watchDevices(uid) {
+    if (devicesUnsub) devicesUnsub();
+    const col = db.collection("users").doc(uid).collection("devices");
+    devicesUnsub = col.onSnapshot((snap) => {
+      const list = $("deviceList");
+      if (snap.empty) {
+        list.innerHTML = '<div class="empty" style="padding:20px 8px">Todavía no hay dispositivos.<br>Vinculá la app con esta misma cuenta.</div>';
+        return;
+      }
+      list.innerHTML = "";
+      snap.forEach((doc) => {
+        const d = doc.data();
+        const el = document.createElement("button");
+        el.className = "device" + (doc.id === selectedId ? " active" : "");
+        el.innerHTML = '<div class="name"></div><div class="meta"></div>';
+        el.querySelector(".name").textContent = d.name || "Dispositivo";
+        el.querySelector(".meta").textContent = (d.model || "") + " · " + (d.updatedAt ? new Date(d.updatedAt).toLocaleString() : "—");
+        el.onclick = () => selectDevice(uid, doc.id);
+        list.appendChild(el);
+      });
+      if (!selectedId) selectDevice(uid, snap.docs[0].id);
+    }, () => { $("deviceList").innerHTML = '<div class="empty">No se pudo leer. Revisá las reglas de Firestore.</div>'; });
+  }
+
+  function selectDevice(uid, id) {
+    selectedId = id;
+    document.querySelectorAll(".device").forEach(e => e.classList.remove("active"));
+    if (deviceUnsub) deviceUnsub();
+    if (locUnsub) locUnsub();
+    map = lastMarker = trackLine = null; histMarkers = [];
+
+    const ref = db.collection("users").doc(uid).collection("devices").doc(id);
+    buildDetailSkeleton(ref);
+
+    deviceUnsub = ref.onSnapshot((doc) => {
+      if (!doc.exists) return;
+      updateDetail(ref, doc.data());
+      const list = $("deviceList");
+      list.querySelectorAll(".device").forEach(e => e.classList.remove("active"));
+    });
+
+    locUnsub = ref.collection("locations").orderBy("ts", "desc").limit(50)
+      .onSnapshot((snap) => {
+        const pts = [];
+        snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
+        renderHistory(pts);
+      }, () => {});
+  }
+
+  function buildDetailSkeleton(ref) {
+    $("detailWrap").innerHTML = `
+      <div class="panel">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <h2 id="dName" style="flex:1;min-width:120px">Dispositivo</h2>
+          <button id="btnRename" class="btn-ghost" style="padding:6px 10px">Renombrar</button>
+          <button id="btnDelete" class="btn-danger" style="padding:6px 10px">Eliminar</button>
+        </div>
+        <div class="sub" id="dModel"></div>
+        <div id="dStatus" class="statusrow"></div>
+
+        <div class="section-label">Funciones</div>
+        <div class="toggle-row first">
+          <div class="txt"><div class="t">Compartir ubicación (Familiar)</div><div class="d">Rastreo en segundo plano</div></div>
+          <label class="switch"><input type="checkbox" id="tgTracking"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row">
+          <div class="txt"><div class="t">Foto antirrobo</div><div class="d">Captura tras PIN fallidos</div></div>
+          <label class="switch"><input type="checkbox" id="tgPhoto"><span class="slider"></span></label>
+        </div>
+
+        <div class="section-label">Comandos</div>
+        <div class="cmds">
+          <button id="cmdLocate" class="btn-primary">Localizar</button>
+          <button id="cmdAlarm">Alarma</button>
+          <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
+          <button id="cmdLock">Bloquear</button>
+        </div>
+        <input id="lockMsg" placeholder="Mensaje para mostrar al bloquear (opcional)" style="margin-top:10px" />
+
+        <div class="section-label">Ubicación</div>
+        <div id="map"></div>
+        <div id="history" class="history"></div>
+      </div>`;
+
+    $("tgTracking").onchange = (e) => ref.set({ settings: { tracking: e.target.checked } }, { merge: true });
+    $("tgPhoto").onchange = (e) => ref.set({ settings: { photo: e.target.checked } }, { merge: true });
+    $("cmdLocate").onclick = () => sendCommand(ref, "LOCATE");
+    $("cmdAlarm").onclick = () => sendCommand(ref, "ALARM");
+    $("cmdStopAlarm").onclick = () => sendCommand(ref, "STOP_ALARM");
+    $("cmdLock").onclick = () => sendCommand(ref, "LOCK", { message: $("lockMsg").value.trim() });
+    $("btnRename").onclick = () => {
+      const actual = $("dName").textContent;
+      const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);
+      if (nuevo && nuevo.trim()) ref.set({ name: nuevo.trim() }, { merge: true });
+    };
+    $("btnDelete").onclick = () => {
+      if (window.confirm("¿Eliminar este dispositivo del portal?\n\n(No desinstala la app del teléfono. El teléfono que esté en uso volverá a aparecer al sincronizar; borrá solo los duplicados viejos.)")) {
+        deleteDevice(ref);
+      }
+    };
+  }
+
+  async function deleteDevice(ref) {
+    try {
+      const locs = await ref.collection("locations").limit(500).get();
+      if (!locs.empty) {
+        const b = db.batch();
+        locs.forEach((d) => b.delete(d.ref));
+        await b.commit();
+      }
+      await ref.delete();
+      selectedId = null;
+      if (deviceUnsub) deviceUnsub();
+      if (locUnsub) locUnsub();
+      $("detailWrap").innerHTML = '<div class="panel"><div class="empty">Dispositivo eliminado. Elegí otro de la izquierda.</div></div>';
+    } catch (e) {
+      window.alert("No se pudo eliminar: " + (e.message || e));
+    }
+  }
+
+  function updateDetail(ref, d) {
+    $("dName").textContent = d.name || "Dispositivo";
+    $("dModel").textContent = d.model || "";
+    const st = d.status;
+    const stEl = $("dStatus");
+    if (stEl) {
+      if (st) {
+        const bat = (st.battery != null && st.battery >= 0) ? st.battery + "%" : "—";
+        const when = st.ts ? new Date(st.ts).toLocaleString() : "";
+        stEl.innerHTML = `<span class="chip">🔋 ${bat}</span> <span class="chip">📶 ${st.network || "—"}</span> <span class="chip-when">act.: ${when}</span>`;
+      } else {
+        stEl.innerHTML = '<span class="chip-when">Estado no disponible todavía.</span>';
+      }
+    }
+    const s = d.settings || {};
+    if ($("tgTracking")) $("tgTracking").checked = !!s.tracking;
+    if ($("tgPhoto")) $("tgPhoto").checked = !!s.photo;
+    if (d.lastLocation) showOnMap([d.lastLocation], true);
+  }
+
+  function ensureMap() {
+    if (map) return map;
+    map = L.map("map", { zoomControl: true }).setView([-34.6037, -58.3816], 12);
+    // CARTO permite este uso (OSM bloquea el uso directo de sus servidores gratuitos).
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20, subdomains: "abcd",
+      attribution: "© OpenStreetMap, © CARTO"
+    }).addTo(map);
+    return map;
+  }
+
+  function renderHistory(pts) {
+    // Lista
+    const h = $("history");
+    if (!h) return;
+    if (!pts.length) { h.innerHTML = '<div class="empty" style="padding:20px">Sin ubicaciones todavía. Usá "Localizar" o activá "Compartir ubicación".</div>'; }
+    else {
+      h.innerHTML = "";
+      pts.forEach((p, i) => {
+        const el = document.createElement("div");
+        el.className = "hist-item";
+        el.innerHTML = `<span class="when"></span><span class="co mono"></span>`;
+        el.querySelector(".when").textContent = p.ts ? new Date(p.ts).toLocaleString() : "—";
+        el.querySelector(".co").textContent = Number(p.lat).toFixed(5) + ", " + Number(p.lng).toFixed(5);
+        el.onclick = () => { ensureMap().setView([p.lat, p.lng], 16); };
+        h.appendChild(el);
+      });
+    }
+    // Mapa: puntos (más reciente primero) + recorrido
+    showOnMap(pts, false);
+  }
+
+  function showOnMap(pts, isLast) {
+    if (!pts || !pts.length) return;
+    const m = ensureMap();
+    // limpiar marcadores de historial anteriores
+    histMarkers.forEach(x => m.removeLayer(x)); histMarkers = [];
+    if (trackLine) { m.removeLayer(trackLine); trackLine = null; }
+
+    // pts viene ordenado desc (más nuevo primero); para la línea lo invertimos
+    const ordered = [...pts].reverse();
+    const latlngs = ordered.map(p => [p.lat, p.lng]);
+
+    if (latlngs.length > 1) {
+      trackLine = L.polyline(latlngs, { color: "#1f6feb", weight: 3, opacity: .7 }).addTo(m);
+    }
+    ordered.forEach((p, idx) => {
+      const newest = idx === ordered.length - 1;
+      const mk = L.circleMarker([p.lat, p.lng], {
+        radius: newest ? 8 : 5,
+        color: newest ? "#1f6feb" : "#8b949e",
+        fillColor: newest ? "#1f6feb" : "#8b949e",
+        fillOpacity: newest ? 1 : .6, weight: 2
+      }).addTo(m);
+      mk.bindPopup((newest ? "Última ubicación<br>" : "") + (p.ts ? new Date(p.ts).toLocaleString() : ""));
+      histMarkers.push(mk);
+    });
+
+    const last = ordered[ordered.length - 1];
+    if (latlngs.length > 1) m.fitBounds(L.latLngBounds(latlngs).pad(0.2));
+    else m.setView([last.lat, last.lng], 16);
+    setTimeout(() => m.invalidateSize(), 100);
+  }
+
+  function sendCommand(ref, type, extra) {
+    const id = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    ref.set({ command: Object.assign({ type, id, ts: Date.now() }, extra || {}) }, { merge: true });
+  }
+</script>
