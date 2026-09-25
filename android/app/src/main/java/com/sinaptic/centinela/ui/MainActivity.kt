@@ -11,11 +11,15 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.Switch
 import android.widget.Toast
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.gms.common.api.ResolvableApiException
+import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.Priority
 import com.google.firebase.firestore.ListenerRegistration
 import com.sinaptic.centinela.R
@@ -84,6 +88,16 @@ class MainActivity : AppCompatActivity() {
     private val sosPerms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ -> SosCommand(this).trigger(); toast("SOS activado: avisando a tus contactos.") }
+
+    // Diálogo del sistema para ENCENDER la ubicación con un toque.
+    private var pendingAfterGps: (() -> Unit)? = null
+    private val gpsResolution = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        val action = pendingAfterGps; pendingAfterGps = null
+        if (result.resultCode == RESULT_OK) action?.invoke()
+        else toast("Necesitás encender la ubicación para esta función.")
+    }
 
     // --- Ciclo de vida ---------------------------------------------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -206,15 +220,56 @@ class MainActivity : AppCompatActivity() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
-    @SuppressLint("MissingPermission")
+    /** Verifica que la ubicación del sistema esté encendida; si no, muestra el diálogo para prenderla. */
+    private fun ensureGpsThen(action: () -> Unit) {
+        val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000L).build()
+        val settings = LocationSettingsRequest.Builder().addLocationRequest(req).build()
+        LocationServices.getSettingsClient(this).checkLocationSettings(settings)
+            .addOnSuccessListener { action() }
+            .addOnFailureListener { e ->
+                if (e is ResolvableApiException) {
+                    pendingAfterGps = action
+                    runCatching {
+                        gpsResolution.launch(IntentSenderRequest.Builder(e.resolution).build())
+                    }.onFailure { toast("No se pudo abrir el diálogo de ubicación.") }
+                } else {
+                    toast("Encendé la ubicación del teléfono para esta función.")
+                }
+            }
+    }
+
     private fun fetchAndUploadLocation() {
         if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
             toast("Activá \"Compartir ubicación\" en la app para permitir localizar.")
             return
         }
-        LocationServices.getFusedLocationProviderClient(this)
-            .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
-            .addOnSuccessListener { loc -> if (loc != null) sync.uploadLocation(loc.latitude, loc.longitude) }
+        ensureGpsThen { doFetchLocation() }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun doFetchLocation() {
+        val client = LocationServices.getFusedLocationProviderClient(this)
+        toast("Buscando ubicación…")
+        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { loc ->
+                if (loc != null) {
+                    sync.uploadLocation(loc.latitude, loc.longitude)
+                    toast("Ubicación enviada.")
+                } else {
+                    // Plan B: última ubicación conocida.
+                    client.lastLocation
+                        .addOnSuccessListener { last ->
+                            if (last != null) {
+                                sync.uploadLocation(last.latitude, last.longitude)
+                                toast("Ubicación (última conocida) enviada.")
+                            } else {
+                                toast("No se pudo obtener ubicación. Revisá que el GPS del teléfono esté encendido.")
+                            }
+                        }
+                        .addOnFailureListener { toast("No se pudo obtener ubicación (GPS apagado?).") }
+                }
+            }
+            .addOnFailureListener { toast("Error al localizar: ${it.message}") }
     }
 
     private fun confirmUnlink() {
@@ -255,8 +310,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun enableTracking() {
         DeviceRepository(this).prefs().edit().putBoolean("tracking_enabled", true).apply()
-        val i = Intent(this, LocationService::class.java).apply { action = LocationService.ACTION_START }
-        ContextCompat.startForegroundService(this, i)
+        ensureGpsThen {
+            val i = Intent(this, LocationService::class.java).apply { action = LocationService.ACTION_START }
+            ContextCompat.startForegroundService(this, i)
+        }
     }
 
     private fun disableTracking() {
