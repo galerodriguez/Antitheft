@@ -220,9 +220,12 @@ class MainActivity : AppCompatActivity() {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
-    /** Verifica que la ubicación del sistema esté encendida; si no, muestra el diálogo para prenderla. */
+    /**
+     * Verifica que la ubicación del sistema esté encendida; si no, muestra el diálogo para prenderla.
+     * Usamos prioridad "equilibrada": alcanza con ubicación por RED (WiFi/antenas), no exige GPS.
+     */
     private fun ensureGpsThen(action: () -> Unit) {
-        val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000L).build()
+        val req = LocationRequest.Builder(Priority.PRIORITY_BALANCED_POWER_ACCURACY, 10_000L).build()
         val settings = LocationSettingsRequest.Builder().addLocationRequest(req).build()
         LocationServices.getSettingsClient(this).checkLocationSettings(settings)
             .addOnSuccessListener { action() }
@@ -250,7 +253,8 @@ class MainActivity : AppCompatActivity() {
     private fun doFetchLocation() {
         val client = LocationServices.getFusedLocationProviderClient(this)
         toast("Buscando ubicación…")
-        client.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+        // Prioridad equilibrada: usa WiFi/antenas (red) además del GPS -> funciona sin GPS.
+        client.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
             .addOnSuccessListener { loc ->
                 if (loc != null) {
                     sync.uploadLocation(loc.latitude, loc.longitude)
