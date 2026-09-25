@@ -11,6 +11,7 @@ import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.messaging.FirebaseMessaging
 import java.util.UUID
 
 /**
@@ -76,7 +77,17 @@ class FirebaseSync(private val context: Context) {
             }
             doc.set(data, SetOptions.merge())
             reportStatus()
+            refreshFcmToken()
         }.addOnFailureListener { Log.e(TAG, "registerDevice", it) }
+    }
+
+    /** Guarda el token FCM del dispositivo (para push "puro" en el futuro). */
+    fun saveFcmToken(token: String) {
+        deviceDoc()?.set(mapOf("fcmToken" to token), SetOptions.merge())
+    }
+
+    fun refreshFcmToken() {
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { saveFcmToken(it) }
     }
 
     /** Reporta batería y tipo de conexión al documento del dispositivo. */
@@ -139,14 +150,15 @@ class FirebaseSync(private val context: Context) {
             val cmdId = command?.get("id") as? String
             val cmdType = command?.get("type") as? String
             val cmdMsg = command?.get("message") as? String
-            if (cmdType != null && cmdId != null && cmdId != lastCmdId) {
-                lastCmdId = cmdId
+            // Dedup por preferencias: así la app abierta y el servicio no ejecutan el mismo
+            // comando dos veces (comparten el mismo proceso y las mismas preferencias).
+            val stored = prefs.getString("last_cmd_id", null)
+            if (cmdType != null && cmdId != null && cmdId != stored) {
+                prefs.edit().putString("last_cmd_id", cmdId).apply()
                 onCommand(cmdType, cmdMsg)
             }
         }
     }
-
-    private var lastCmdId: String? = null
 
     companion object { private const val TAG = "FirebaseSync" }
 }

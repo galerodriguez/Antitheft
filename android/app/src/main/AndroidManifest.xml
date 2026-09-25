@@ -74,7 +74,13 @@
             </intent-filter>
         </service>
 
-        <!-- Servicio en primer plano para rastreo (notificación persistente obligatoria) -->
+        <!-- Servicio guardián: escucha comandos (app cerrada) + rastreo. Notificación persistente. -->
+        <service
+            android:name=".service.GuardianService"
+            android:foregroundServiceType="location"
+            android:exported="false" />
+
+        <!-- (Legado) Servicio de rastreo anterior, ya no se usa. -->
         <service
             android:name=".location.LocationService"
             android:foregroundServiceType="location"

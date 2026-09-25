@@ -28,7 +28,7 @@ import com.sinaptic.centinela.commands.CommandDispatcher
 import com.sinaptic.centinela.data.DeviceRepository
 import com.sinaptic.centinela.data.FirebaseSync
 import com.sinaptic.centinela.data.PinManager
-import com.sinaptic.centinela.location.LocationService
+import com.sinaptic.centinela.service.GuardianService
 import com.sinaptic.centinela.sos.SosCommand
 
 /**
@@ -149,21 +149,23 @@ class MainActivity : AppCompatActivity() {
         switchPhoto = findViewById(R.id.switchPhoto)
         switchPhoto.isChecked = prefs.getBoolean("antitheft_photo_enabled", false)
         switchPhoto.setOnCheckedChangeListener { _, on ->
+            if (applyingRemote) { setPhotoEnabled(on); return@setOnCheckedChangeListener }
             if (on) {
                 if (hasPermission(Manifest.permission.CAMERA)) setPhotoEnabled(true)
                 else cameraPerm.launch(Manifest.permission.CAMERA)
             } else setPhotoEnabled(false)
-            if (!applyingRemote) sync.pushSetting("photo", on)
+            sync.pushSetting("photo", on)
         }
 
         switchTracking = findViewById(R.id.switchTracking)
         switchTracking.isChecked = prefs.getBoolean("tracking_enabled", false)
         switchTracking.setOnCheckedChangeListener { _, on ->
+            if (applyingRemote) return@setOnCheckedChangeListener // el guardián aplica el ajuste remoto
             if (on) {
                 if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) ensureBackgroundThenEnable()
                 else fgLocPerms.launch(foregroundLocationPerms())
             } else disableTracking()
-            if (!applyingRemote) sync.pushSetting("tracking", on)
+            sync.pushSetting("tracking", on)
         }
 
         findViewById<Button>(R.id.btnDeviceAdmin).setOnClickListener { requestDeviceAdmin() }
@@ -191,6 +193,9 @@ class MainActivity : AppCompatActivity() {
             onSettings = { tracking, photo -> applyRemoteSettings(tracking, photo) },
             onCommand = { type, message -> onRemoteCommand(type, message) },
         )
+        // Con permiso de ubicación, dejamos corriendo el guardián para recibir comandos
+        // aunque después cierres la app.
+        if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) GuardianService.start(this)
     }
 
     private fun applyRemoteSettings(tracking: Boolean, photo: Boolean) {
@@ -281,7 +286,9 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Desvincular")
             .setMessage("Vas a desconectar este dispositivo del portal. ¿Continuar?")
             .setPositiveButton("Desvincular") { _, _ ->
-                sync.signOut(); listener?.remove(); listener = null; refreshAccountUi()
+                sync.signOut(); listener?.remove(); listener = null
+                stopService(Intent(this, GuardianService::class.java))
+                refreshAccountUi()
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -314,15 +321,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun enableTracking() {
         DeviceRepository(this).prefs().edit().putBoolean("tracking_enabled", true).apply()
-        ensureGpsThen {
-            val i = Intent(this, LocationService::class.java).apply { action = LocationService.ACTION_START }
-            ContextCompat.startForegroundService(this, i)
-        }
+        // Arranca el guardián (rastrea + escucha comandos). Pide encender la ubicación si hace falta.
+        ensureGpsThen { GuardianService.start(this) }
     }
 
     private fun disableTracking() {
         DeviceRepository(this).prefs().edit().putBoolean("tracking_enabled", false).apply()
-        stopService(Intent(this, LocationService::class.java))
+        // El guardián sigue corriendo para comandos; deja de rastrear por el listener de ajustes.
     }
 
     private fun foregroundLocationPerms(): Array<String> {

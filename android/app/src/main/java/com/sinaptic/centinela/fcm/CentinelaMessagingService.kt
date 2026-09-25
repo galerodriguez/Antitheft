@@ -3,32 +3,29 @@ package com.sinaptic.centinela.fcm
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.sinaptic.centinela.commands.CommandDispatcher
-import com.sinaptic.centinela.data.DeviceRepository
+import com.sinaptic.centinela.data.FirebaseSync
+import com.sinaptic.centinela.service.GuardianService
 
 /**
- * Recibe los comandos remotos enviados desde el panel web vía FCM.
+ * Recepción de FCM.
+ *  - onNewToken: guarda el token del dispositivo en Firestore.
+ *  - onMessageReceived: despierta el servicio guardián, que lee el comando desde Firestore.
  *
- * IMPORTANTE: el push solo transporta la SEÑAL del comando (ej. LOCATE). Los datos
- * sensibles (ubicación, fotos) NO viajan en el push: la app los sube al backend por HTTPS.
+ * Nota: enviar el push "puro" (para despertar una app completamente cerrada) requiere un
+ * servidor (Cloud Functions / plan Blaze). Mientras tanto, el GuardianService mantiene la
+ * escucha viva y los comandos llegan igual con el teléfono online.
  */
 class CentinelaMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
-        // Cada vez que FCM rota el token, lo registramos en el backend.
-        DeviceRepository(applicationContext).updateFcmToken(token)
+        Log.i(TAG, "Nuevo token FCM")
+        FirebaseSync(applicationContext).saveFcmToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val data = message.data
-        val command = data["command"] ?: return
-        val requestId = data["requestId"] ?: ""
-        Log.i(TAG, "Comando recibido: $command ($requestId)")
-
-        CommandDispatcher(applicationContext).dispatch(command, requestId, data)
+        Log.i(TAG, "Push recibido; despertando servicio guardián")
+        runCatching { GuardianService.start(applicationContext) }
     }
 
-    companion object {
-        private const val TAG = "CentinelaFCM"
-    }
+    companion object { private const val TAG = "CentinelaFCM" }
 }
