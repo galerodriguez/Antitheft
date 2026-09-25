@@ -1,11 +1,16 @@
 package com.sinaptic.centinela.ui
 
+import android.Manifest
 import android.app.admin.DevicePolicyManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Button
 import android.widget.Switch
+import android.widget.Toast
+import androidx.activity.result.contracts.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sinaptic.centinela.R
@@ -16,18 +21,48 @@ import com.sinaptic.centinela.location.LocationService
 import com.sinaptic.centinela.sos.SosCommand
 
 /**
- * Pantalla principal. Actúa como "puerta de entrada" (router):
+ * Pantalla principal + puerta de entrada (consentimiento / PIN) + manejo de permisos en runtime.
  *
- *   sin consentimiento        -> OnboardingActivity
- *   sin PIN (primer uso)      -> PinActivity (SETUP)
- *   con PIN, no desbloqueado  -> PinActivity (UNLOCK)
- *   con PIN, desbloqueado     -> muestra la pantalla principal
- *
- * El desbloqueo se recuerda a nivel de proceso (unlockedThisProcess). Así se pide el PIN
- * al abrir la app (arranque en frío) sin caer en bucles. La comprobación se hace UNA vez en
- * onCreate, no en onStart, que era lo que generaba el bucle anterior.
+ * Cada función pide su permiso cuando el usuario la activa:
+ *  - Compartir ubicación (Familiar) / SOS -> ubicación (+ notificaciones en Android 13+)
+ *  - Foto antirrobo -> cámara
+ * Si el permiso se niega, el toggle se revierte y se avisa por qué.
  */
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var switchPhoto: Switch
+    private lateinit var switchTracking: Switch
+
+    // --- Lanzadores de permisos (se registran al construir la Activity) ---------------
+    private val trackingPerms = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { result ->
+        val ok = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                 result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (ok) enableTracking()
+        else {
+            switchTracking.isChecked = false
+            toast("Se necesita permiso de ubicación para compartir tu ubicación.")
+        }
+    }
+
+    private val cameraPerm = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) setPhotoEnabled(true)
+        else {
+            switchPhoto.isChecked = false
+            toast("Se necesita permiso de cámara para la foto antirrobo.")
+        }
+    }
+
+    private val sosPerms = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Con o sin permiso seguimos: el SOS avisa igual, con ubicación si está disponible.
+        SosCommand(this).trigger()
+        toast("SOS activado: avisando a tus contactos.")
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,10 +71,8 @@ class MainActivity : AppCompatActivity() {
 
         // 1) Consentimiento
         if (!prefs.getBoolean("consent_accepted", false)) {
-            startActivity(Intent(this, OnboardingActivity::class.java))
-            finish(); return
+            startActivity(Intent(this, OnboardingActivity::class.java)); finish(); return
         }
-
         // 2) PIN (crear o desbloquear)
         if (!unlockedThisProcess) {
             val mode = if (PinManager(this).isPinSet())
@@ -48,8 +81,7 @@ class MainActivity : AppCompatActivity() {
                 .putExtra(PinActivity.EXTRA_MODE, mode))
             finish(); return
         }
-
-        // 3) Ya desbloqueado: mostrar la app
+        // 3) App
         setContentView(R.layout.activity_main)
         setupUi()
     }
@@ -57,35 +89,75 @@ class MainActivity : AppCompatActivity() {
     private fun setupUi() {
         val prefs = DeviceRepository(this).prefs()
 
-        findViewById<Switch>(R.id.switchPhoto).apply {
-            isChecked = prefs.getBoolean("antitheft_photo_enabled", false)
-            setOnCheckedChangeListener { _, on ->
-                prefs.edit().putBoolean("antitheft_photo_enabled", on).apply()
-            }
+        switchPhoto = findViewById(R.id.switchPhoto)
+        switchPhoto.isChecked = prefs.getBoolean("antitheft_photo_enabled", false)
+        switchPhoto.setOnCheckedChangeListener { _, on ->
+            if (on) {
+                if (hasPermission(Manifest.permission.CAMERA)) setPhotoEnabled(true)
+                else cameraPerm.launch(Manifest.permission.CAMERA)
+            } else setPhotoEnabled(false)
         }
 
-        findViewById<Switch>(R.id.switchTracking).apply {
-            isChecked = prefs.getBoolean("tracking_enabled", false)
-            setOnCheckedChangeListener { _, on ->
-                prefs.edit().putBoolean("tracking_enabled", on).apply()
-                if (on) startTracking()
-                else stopService(Intent(this@MainActivity, LocationService::class.java))
-            }
+        switchTracking = findViewById(R.id.switchTracking)
+        switchTracking.isChecked = prefs.getBoolean("tracking_enabled", false)
+        switchTracking.setOnCheckedChangeListener { _, on ->
+            if (on) {
+                if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) enableTracking()
+                else trackingPerms.launch(locationPermissions())
+            } else disableTracking()
         }
 
         findViewById<Button>(R.id.btnDeviceAdmin).setOnClickListener { requestDeviceAdmin() }
-        findViewById<Button>(R.id.btnSos).setOnClickListener { SosCommand(this).trigger() }
+        findViewById<Button>(R.id.btnSos).setOnClickListener { onSos() }
     }
 
-    private fun startTracking() {
+    private fun onSos() {
+        if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            SosCommand(this).trigger()
+            toast("SOS activado: compartiendo tu ubicación.")
+        } else {
+            sosPerms.launch(locationPermissions())
+        }
+    }
+
+    private fun setPhotoEnabled(on: Boolean) {
+        DeviceRepository(this).prefs().edit().putBoolean("antitheft_photo_enabled", on).apply()
+    }
+
+    private fun enableTracking() {
+        DeviceRepository(this).prefs().edit().putBoolean("tracking_enabled", true).apply()
         val i = Intent(this, LocationService::class.java).apply { action = LocationService.ACTION_START }
         ContextCompat.startForegroundService(this, i)
+        toast("Compartiendo ubicación.")
     }
+
+    private fun disableTracking() {
+        DeviceRepository(this).prefs().edit().putBoolean("tracking_enabled", false).apply()
+        stopService(Intent(this, LocationService::class.java))
+    }
+
+    private fun locationPermissions(): Array<String> {
+        val perms = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+        )
+        // En Android 13+ también hace falta permiso para mostrar la notificación del servicio.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            perms.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        return perms.toTypedArray()
+    }
+
+    private fun hasPermission(p: String) =
+        ContextCompat.checkSelfPermission(this, p) == PackageManager.PERMISSION_GRANTED
 
     private fun requestDeviceAdmin() {
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = CentinelaDeviceAdminReceiver.componentName(this)
-        if (dpm.isAdminActive(admin)) return
+        if (dpm.isAdminActive(admin)) {
+            toast("La protección antirrobo ya está activa.")
+            return
+        }
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin)
             putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION,
@@ -94,8 +166,9 @@ class MainActivity : AppCompatActivity() {
         startActivity(intent)
     }
 
+    private fun toast(m: String) = Toast.makeText(this, m, Toast.LENGTH_SHORT).show()
+
     companion object {
-        /** Recordamos que el usuario ya se desbloqueó en esta ejecución de la app. */
         @JvmStatic
         var unlockedThisProcess = false
     }
