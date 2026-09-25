@@ -1,6 +1,9 @@
 package com.sinaptic.centinela.data
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.BatteryManager
 import android.os.Build
 import android.util.Log
 import com.google.firebase.auth.ktx.auth
@@ -13,14 +16,12 @@ import java.util.UUID
 /**
  * Puente entre la app y Firebase (Firestore + Auth).
  *
- * Modelo de datos:
- *   users/{uid}/devices/{deviceId}
- *     name, model, updatedAt
- *     settings: { tracking: Bool, photo: Bool }     <- controlable desde el portal
- *     command:  { type: String, id: String, ts }    <- comando puntual (LOCATE, LOCK, ...)
- *     lastLocation: { lat, lng, ts }
- *
- * La app y el portal usan la MISMA cuenta (email/contraseña). Así ambos ven el mismo device.
+ * users/{uid}/devices/{deviceId}
+ *   name (editable desde el portal), model, updatedAt
+ *   settings: { tracking, photo }
+ *   status:   { battery, network, ts }      <- batería y tipo de conexión
+ *   command:  { type, id, ts, message? }
+ *   lastLocation: { lat, lng, ts } + subcolección locations/
  */
 class FirebaseSync(private val context: Context) {
 
@@ -33,10 +34,7 @@ class FirebaseSync(private val context: Context) {
 
     fun deviceId(): String {
         var id = prefs.getString("device_id", null)
-        if (id == null) {
-            id = UUID.randomUUID().toString()
-            prefs.edit().putString("device_id", id).apply()
-        }
+        if (id == null) { id = UUID.randomUUID().toString(); prefs.edit().putString("device_id", id).apply() }
         return id
     }
 
@@ -55,27 +53,62 @@ class FirebaseSync(private val context: Context) {
     fun signOut() = auth.signOut()
 
     private fun deviceDoc() = auth.currentUser?.let {
-        db.collection("users").document(it.uid)
-            .collection("devices").document(deviceId())
+        db.collection("users").document(it.uid).collection("devices").document(deviceId())
     }
 
-    /** Crea/actualiza el documento del dispositivo con sus ajustes actuales. */
+    /**
+     * Crea/actualiza el dispositivo SIN pisar el nombre ni los ajustes que ya existan
+     * (para que renombrar desde el portal no se sobrescriba). Luego reporta estado.
+     */
     fun registerDevice() {
         val doc = deviceDoc() ?: return
-        val data = mapOf(
-            "name" to Build.MODEL,
-            "model" to "${Build.MANUFACTURER} ${Build.MODEL}",
-            "updatedAt" to System.currentTimeMillis(),
-            "settings" to mapOf(
-                "tracking" to prefs.getBoolean("tracking_enabled", false),
-                "photo" to prefs.getBoolean("antitheft_photo_enabled", false),
-            ),
-        )
-        doc.set(data, SetOptions.merge())
-            .addOnFailureListener { Log.e(TAG, "registerDevice", it) }
+        doc.get().addOnSuccessListener { snap ->
+            val data = hashMapOf<String, Any>(
+                "model" to "${Build.MANUFACTURER} ${Build.MODEL}",
+                "updatedAt" to System.currentTimeMillis(),
+            )
+            if (!snap.exists() || snap.getString("name") == null) data["name"] = Build.MODEL
+            if (!snap.exists() || snap.get("settings") == null) {
+                data["settings"] = mapOf(
+                    "tracking" to prefs.getBoolean("tracking_enabled", false),
+                    "photo" to prefs.getBoolean("antitheft_photo_enabled", false),
+                )
+            }
+            doc.set(data, SetOptions.merge())
+            reportStatus()
+        }.addOnFailureListener { Log.e(TAG, "registerDevice", it) }
     }
 
-    /** Escribe un ajuste en Firestore (cuando el usuario lo cambia en la app). */
+    /** Reporta batería y tipo de conexión al documento del dispositivo. */
+    fun reportStatus() {
+        val doc = deviceDoc() ?: return
+        doc.set(mapOf("status" to mapOf(
+            "battery" to batteryLevel(),
+            "network" to networkType(),
+            "ts" to System.currentTimeMillis(),
+        )), SetOptions.merge())
+    }
+
+    private fun batteryLevel(): Int {
+        return try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        } catch (e: Exception) { -1 }
+    }
+
+    private fun networkType(): String {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val nc = cm.getNetworkCapabilities(cm.activeNetwork)
+            when {
+                nc == null -> "Sin conexión"
+                nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
+                nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Datos móviles"
+                else -> "Otra"
+            }
+        } catch (e: Exception) { "Desconocida" }
+    }
+
     fun pushSetting(key: String, value: Boolean) {
         deviceDoc()?.set(mapOf("settings" to mapOf(key to value)), SetOptions.merge())
     }
@@ -85,18 +118,12 @@ class FirebaseSync(private val context: Context) {
         val doc = deviceDoc() ?: return
         val ts = System.currentTimeMillis()
         doc.set(mapOf("lastLocation" to mapOf("lat" to lat, "lng" to lng, "ts" to ts)), SetOptions.merge())
-        // Historial: un documento por ubicación (para ver el recorrido en el portal).
         doc.collection("locations").add(mapOf("lat" to lat, "lng" to lng, "ts" to ts))
     }
 
-    /**
-     * Escucha en tiempo real los cambios del dispositivo.
-     * @param onSettings recibe (tracking, photo) cada vez que cambian.
-     * @param onCommand recibe el tipo de comando nuevo (una sola vez por comando).
-     */
     fun listen(
         onSettings: (tracking: Boolean, photo: Boolean) -> Unit,
-        onCommand: (type: String) -> Unit,
+        onCommand: (type: String, message: String?) -> Unit,
     ): ListenerRegistration? {
         val doc = deviceDoc() ?: return null
         return doc.addSnapshotListener { snap, err ->
@@ -104,17 +131,17 @@ class FirebaseSync(private val context: Context) {
 
             @Suppress("UNCHECKED_CAST")
             val settings = snap.get("settings") as? Map<String, Any?>
-            val tracking = settings?.get("tracking") as? Boolean ?: false
-            val photo = settings?.get("photo") as? Boolean ?: false
-            onSettings(tracking, photo)
+            onSettings(settings?.get("tracking") as? Boolean ?: false,
+                       settings?.get("photo") as? Boolean ?: false)
 
             @Suppress("UNCHECKED_CAST")
             val command = snap.get("command") as? Map<String, Any?>
             val cmdId = command?.get("id") as? String
             val cmdType = command?.get("type") as? String
+            val cmdMsg = command?.get("message") as? String
             if (cmdType != null && cmdId != null && cmdId != lastCmdId) {
                 lastCmdId = cmdId
-                onCommand(cmdType)
+                onCommand(cmdType, cmdMsg)
             }
         }
     }

@@ -56,6 +56,10 @@
     <string name="link_working">Conectando…</string>
     <string name="link_error">No se pudo conectar. Revisá los datos e intentá de nuevo.</string>
 
+    <!-- Pantalla de teléfono protegido / perdido -->
+    <string name="lost_default">Este teléfono está protegido por Antitheft. Si lo encontraste, por favor comunicate con su dueño.</string>
+    <string name="lost_footer">Dispositivo bloqueado remotamente</string>
+
     <!-- Notificación del servicio (neutra y honesta, no engañosa) -->
     <string name="notif_title">Antitheft</string>
     <string name="notif_text">Protección activa</string>

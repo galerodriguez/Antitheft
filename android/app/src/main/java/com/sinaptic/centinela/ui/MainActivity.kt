@@ -172,9 +172,10 @@ class MainActivity : AppCompatActivity() {
         listener?.remove(); listener = null
         if (!sync.isLinked()) return
         sync.registerDevice()
+        sync.reportStatus()
         listener = sync.listen(
             onSettings = { tracking, photo -> applyRemoteSettings(tracking, photo) },
-            onCommand = { type -> onRemoteCommand(type) },
+            onCommand = { type, message -> onRemoteCommand(type, message) },
         )
     }
 
@@ -185,17 +186,32 @@ class MainActivity : AppCompatActivity() {
         applyingRemote = false
     }
 
-    private fun onRemoteCommand(type: String) {
+    private fun onRemoteCommand(type: String, message: String?) {
         when (type.uppercase()) {
             "LOCATE" -> fetchAndUploadLocation()
+            "LOCK" -> lockWithMessage(message)
             else -> CommandDispatcher(this).dispatch(type, "", emptyMap())
         }
         toast("Comando del portal: $type")
     }
 
+    /** Bloquea la pantalla y muestra una pantalla de "teléfono protegido" con el mensaje. */
+    private fun lockWithMessage(message: String?) {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val admin = CentinelaDeviceAdminReceiver.componentName(this)
+        if (dpm.isAdminActive(admin)) dpm.lockNow()
+        val msg = if (message.isNullOrBlank()) getString(R.string.lost_default) else message
+        startActivity(Intent(this, LostMessageActivity::class.java)
+            .putExtra("message", msg)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
     @SuppressLint("MissingPermission")
     private fun fetchAndUploadLocation() {
-        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) return
+        if (!hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            toast("Activá \"Compartir ubicación\" en la app para permitir localizar.")
+            return
+        }
         LocationServices.getFusedLocationProviderClient(this)
             .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
             .addOnSuccessListener { loc -> if (loc != null) sync.uploadLocation(loc.latitude, loc.longitude) }
