@@ -109,12 +109,18 @@
   .leaflet-container { font-family: inherit; }
 
   .history { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  .hist-item { display: flex; justify-content: space-between; gap: 10px; padding: 10px 14px; cursor: pointer;
-    border-top: 1px solid var(--border); font-size: 13px; }
-  .hist-item:first-child { border-top: none; }
+  .hist-day { padding: 8px 14px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--muted); background: var(--card-2);
+    border-top: 1px solid var(--border); }
+  .hist-day:first-child { border-top: none; }
+  .hist-item { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 11px 14px; cursor: pointer; border-top: 1px solid var(--border); font-size: 13px; }
   .hist-item:hover { background: var(--card-2); }
-  .hist-item .when { color: var(--text); }
-  .hist-item .co { color: var(--muted); }
+  .hi-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .hi-time { color: var(--text); font-weight: 600; }
+  .hi-co { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dur { flex: none; font-size: 12px; color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent); border-radius: 999px; padding: 3px 10px; }
 
   .empty { color: var(--muted); text-align: center; padding: 40px 16px; }
 
@@ -394,50 +400,112 @@
     return map;
   }
 
-  function renderHistory(pts) {
-    // Lista
-    const h = $("history");
-    if (!h) return;
-    if (!pts.length) { h.innerHTML = '<div class="empty" style="padding:20px">Sin ubicaciones todavía. Usá "Localizar" o activá "Compartir ubicación".</div>'; }
-    else {
-      h.innerHTML = "";
-      pts.forEach((p, i) => {
-        const el = document.createElement("div");
-        el.className = "hist-item";
-        el.innerHTML = `<span class="when"></span><span class="co mono"></span>`;
-        el.querySelector(".when").textContent = p.ts ? new Date(p.ts).toLocaleString() : "—";
-        el.querySelector(".co").textContent = Number(p.lat).toFixed(5) + ", " + Number(p.lng).toFixed(5);
-        el.onclick = () => { ensureMap().setView([p.lat, p.lng], 16); };
-        h.appendChild(el);
-      });
+  // --- Utilidades para agrupar el historial en "estadías" ---
+  function metersBetween(a, b) {
+    const R = 6371000, toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+    const s = Math.sin(dLat/2)**2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(s));
+  }
+  function fmtDur(ms) {
+    const min = Math.round(ms / 60000);
+    if (min < 1) return "un momento";
+    if (min < 60) return min + " min";
+    const h = Math.floor(min / 60), m = min % 60;
+    return m ? `${h} h ${m} min` : `${h} h`;
+  }
+  function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  function dayLabel(ts) {
+    const d = new Date(ts), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
+    const same = (a, b) => a.toDateString() === b.toDateString();
+    if (same(d, t)) return "Hoy";
+    if (same(d, y)) return "Ayer";
+    return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
+  }
+  // Agrupa puntos consecutivos cercanos (≤70 m, sin cortes de +20 min) en una sola estadía.
+  function buildStays(ptsDesc) {
+    const pts = [...ptsDesc].reverse(); // a orden cronológico
+    const stays = [];
+    for (const p of pts) {
+      const cur = stays[stays.length - 1];
+      const gap = cur ? p.ts - cur.endTs : Infinity;
+      if (cur && metersBetween(cur, p) <= 70 && gap <= 20 * 60000) {
+        cur.endTs = p.ts; cur.count++;
+        cur.lat = (cur.lat * (cur.count - 1) + p.lat) / cur.count;
+        cur.lng = (cur.lng * (cur.count - 1) + p.lng) / cur.count;
+      } else {
+        stays.push({ lat: p.lat, lng: p.lng, startTs: p.ts, endTs: p.ts, count: 1 });
+      }
     }
-    // Mapa: puntos (más reciente primero) + recorrido
-    showOnMap(pts, false);
+    return stays.reverse(); // más reciente primero
   }
 
-  function showOnMap(pts, isLast) {
-    if (!pts || !pts.length) return;
+  function renderHistory(pts) {
+    const h = $("history");
+    if (!h) return;
+    if (!pts.length) {
+      h.innerHTML = '<div class="empty" style="padding:20px">Sin ubicaciones todavía. Usá "Localizar" o activá "Compartir ubicación".</div>';
+      showOnMap([], false);
+      return;
+    }
+    const stays = buildStays(pts);
+    h.innerHTML = "";
+    let lastDay = null;
+    stays.forEach((s) => {
+      const dl = dayLabel(s.startTs);
+      if (dl !== lastDay) {
+        lastDay = dl;
+        const hd = document.createElement("div");
+        hd.className = "hist-day";
+        hd.textContent = dl;
+        h.appendChild(hd);
+      }
+      const moved = s.endTs - s.startTs > 60000;
+      const el = document.createElement("div");
+      el.className = "hist-item";
+      const timeTxt = moved ? `${fmtTime(s.startTs)} – ${fmtTime(s.endTs)}` : fmtTime(s.startTs);
+      const durTxt = moved ? fmtDur(s.endTs - s.startTs) : "punto";
+      el.innerHTML = `
+        <div class="hi-main">
+          <span class="hi-time"></span>
+          <span class="hi-co mono"></span>
+        </div>
+        <span class="dur"></span>`;
+      el.querySelector(".hi-time").textContent = timeTxt;
+      el.querySelector(".hi-co").textContent = Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5);
+      el.querySelector(".dur").textContent = durTxt;
+      el.onclick = () => { ensureMap().setView([s.lat, s.lng], 16); };
+      h.appendChild(el);
+    });
+    showOnMap(stays, false);
+  }
+
+  // Recibe "estadías" (más reciente primero). Dibuja un marcador por estadía y el recorrido.
+  function showOnMap(stays, isLast) {
     const m = ensureMap();
-    // limpiar marcadores de historial anteriores
     histMarkers.forEach(x => m.removeLayer(x)); histMarkers = [];
     if (trackLine) { m.removeLayer(trackLine); trackLine = null; }
+    if (!stays || !stays.length) return;
 
-    // pts viene ordenado desc (más nuevo primero); para la línea lo invertimos
-    const ordered = [...pts].reverse();
-    const latlngs = ordered.map(p => [p.lat, p.lng]);
+    const ordered = [...stays].reverse(); // cronológico para la línea
+    const latlngs = ordered.map(s => [s.lat, s.lng]);
 
     if (latlngs.length > 1) {
-      trackLine = L.polyline(latlngs, { color: "#1f6feb", weight: 3, opacity: .7 }).addTo(m);
+      trackLine = L.polyline(latlngs, { color: "#1f6feb", weight: 3, opacity: .6, dashArray: "4 6" }).addTo(m);
     }
-    ordered.forEach((p, idx) => {
+    ordered.forEach((s, idx) => {
       const newest = idx === ordered.length - 1;
-      const mk = L.circleMarker([p.lat, p.lng], {
-        radius: newest ? 8 : 5,
+      const durMs = s.endTs - s.startTs;
+      const mk = L.circleMarker([s.lat, s.lng], {
+        radius: newest ? 9 : (durMs > 60000 ? 7 : 5),
         color: newest ? "#1f6feb" : "#8b949e",
         fillColor: newest ? "#1f6feb" : "#8b949e",
-        fillOpacity: newest ? 1 : .6, weight: 2
+        fillOpacity: newest ? 1 : .65, weight: 2
       }).addTo(m);
-      mk.bindPopup((newest ? "Última ubicación<br>" : "") + (p.ts ? new Date(p.ts).toLocaleString() : ""));
+      const range = durMs > 60000
+        ? `${fmtTime(s.startTs)} – ${fmtTime(s.endTs)} (${fmtDur(durMs)})`
+        : fmtTime(s.startTs);
+      mk.bindPopup((newest ? "<b>Última ubicación</b><br>" : "") + dayLabel(s.startTs) + "<br>" + range);
       histMarkers.push(mk);
     });
 

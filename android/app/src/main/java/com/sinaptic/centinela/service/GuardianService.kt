@@ -10,7 +10,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -44,6 +46,15 @@ class GuardianService : Service() {
     private var docReg: ListenerRegistration? = null
     private var trackingOn = false
 
+    // Latido: refresca batería y conexión cada pocos minutos aunque no haya movimiento.
+    private val heartbeat = Handler(Looper.getMainLooper())
+    private val heartbeatTask = object : Runnable {
+        override fun run() {
+            runCatching { if (sync.isLinked()) sync.reportStatus() }
+            heartbeat.postDelayed(this, HEARTBEAT_MS)
+        }
+    }
+
     private val locCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let { sync.uploadLocation(it.latitude, it.longitude) }
@@ -56,6 +67,9 @@ class GuardianService : Service() {
         fused = LocationServices.getFusedLocationProviderClient(this)
         startForegroundNotification()
         startListening()
+        // Arranca el latido (el primer reporte ya lo hizo startListening()).
+        heartbeat.removeCallbacks(heartbeatTask)
+        heartbeat.postDelayed(heartbeatTask, HEARTBEAT_MS)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -89,6 +103,8 @@ class GuardianService : Service() {
 
     @SuppressLint("MissingPermission")
     private fun execute(type: String, message: String?) {
+        // Cualquier comando del portal es señal de vida: refrescamos batería/conexión al toque.
+        runCatching { sync.reportStatus() }
         when (type.uppercase()) {
             "LOCATE" -> fused.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
                 .addOnSuccessListener { loc ->
@@ -114,6 +130,7 @@ class GuardianService : Service() {
     }
 
     override fun onDestroy() {
+        heartbeat.removeCallbacks(heartbeatTask)
         docReg?.remove()
         runCatching { fused.removeLocationUpdates(locCallback) }
         super.onDestroy()
@@ -146,6 +163,7 @@ class GuardianService : Service() {
     companion object {
         const val CHANNEL = "centinela_guardian"
         const val NOTIF_ID = 1001
+        private const val HEARTBEAT_MS = 5 * 60 * 1000L  // refresca estado cada 5 minutos
 
         /** Arranca el servicio (solo tiene sentido con permiso de ubicación concedido). */
         fun start(context: Context) {
