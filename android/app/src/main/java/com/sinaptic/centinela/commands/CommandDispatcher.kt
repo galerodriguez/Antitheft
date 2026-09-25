@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.sinaptic.centinela.location.LocationService
+import com.sinaptic.centinela.sos.SosCommand
 
 /**
  * Traduce el nombre de un comando remoto a la acción concreta en el dispositivo.
