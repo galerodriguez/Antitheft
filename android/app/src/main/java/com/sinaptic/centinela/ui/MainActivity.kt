@@ -11,6 +11,7 @@ import android.widget.Button
 import android.widget.Switch
 import android.widget.Toast
 import androidx.activity.result.contracts.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.sinaptic.centinela.R
@@ -21,28 +22,39 @@ import com.sinaptic.centinela.location.LocationService
 import com.sinaptic.centinela.sos.SosCommand
 
 /**
- * Pantalla principal + puerta de entrada (consentimiento / PIN) + manejo de permisos en runtime.
+ * Pantalla principal + puerta de entrada (consentimiento / PIN) + permisos en runtime.
  *
- * Cada función pide su permiso cuando el usuario la activa:
- *  - Compartir ubicación (Familiar) / SOS -> ubicación (+ notificaciones en Android 13+)
- *  - Foto antirrobo -> cámara
- * Si el permiso se niega, el toggle se revierte y se avisa por qué.
+ * Ubicación:
+ *  1) Se pide la ubicación en primer plano (FINE/COARSE) + notificaciones (Android 13+).
+ *  2) Luego, por separado, la ubicación en SEGUNDO PLANO ("Permitir todo el tiempo"), que es
+ *     lo que permite al modo Familiar seguir compartiendo con la app cerrada (Android 10+).
+ * Cámara: se pide al activar la foto antirrobo.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var switchPhoto: Switch
     private lateinit var switchTracking: Switch
 
-    // --- Lanzadores de permisos (se registran al construir la Activity) ---------------
-    private val trackingPerms = registerForActivityResult(
+    // Paso 1: ubicación en primer plano (+ notificaciones)
+    private val fgLocPerms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
         val ok = result[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
                  result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (ok) enableTracking()
+        if (ok) ensureBackgroundThenEnable()
         else {
             switchTracking.isChecked = false
             toast("Se necesita permiso de ubicación para compartir tu ubicación.")
+        }
+    }
+
+    // Paso 2: ubicación en segundo plano ("Permitir todo el tiempo")
+    private val bgLocPerm = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        enableTracking() // el rastreo se activa igual; el background mejora el modo cerrado
+        if (!granted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            toast("Para compartir con la app cerrada, elegí \"Permitir todo el tiempo\" en Ajustes.")
         }
     }
 
@@ -59,7 +71,6 @@ class MainActivity : AppCompatActivity() {
     private val sosPerms = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { _ ->
-        // Con o sin permiso seguimos: el SOS avisa igual, con ubicación si está disponible.
         SosCommand(this).trigger()
         toast("SOS activado: avisando a tus contactos.")
     }
@@ -69,11 +80,9 @@ class MainActivity : AppCompatActivity() {
 
         val prefs = DeviceRepository(this).prefs()
 
-        // 1) Consentimiento
         if (!prefs.getBoolean("consent_accepted", false)) {
             startActivity(Intent(this, OnboardingActivity::class.java)); finish(); return
         }
-        // 2) PIN (crear o desbloquear)
         if (!unlockedThisProcess) {
             val mode = if (PinManager(this).isPinSet())
                 PinActivity.MODE_UNLOCK else PinActivity.MODE_SETUP
@@ -81,7 +90,6 @@ class MainActivity : AppCompatActivity() {
                 .putExtra(PinActivity.EXTRA_MODE, mode))
             finish(); return
         }
-        // 3) App
         setContentView(R.layout.activity_main)
         setupUi()
     }
@@ -102,8 +110,8 @@ class MainActivity : AppCompatActivity() {
         switchTracking.isChecked = prefs.getBoolean("tracking_enabled", false)
         switchTracking.setOnCheckedChangeListener { _, on ->
             if (on) {
-                if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) enableTracking()
-                else trackingPerms.launch(locationPermissions())
+                if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) ensureBackgroundThenEnable()
+                else fgLocPerms.launch(foregroundLocationPerms())
             } else disableTracking()
         }
 
@@ -111,12 +119,32 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSos).setOnClickListener { onSos() }
     }
 
+    /** Tras tener la ubicación de primer plano, pide (con explicación) la de segundo plano. */
+    private fun ensureBackgroundThenEnable() {
+        val needsBg = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            !hasPermission(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+        if (!needsBg) { enableTracking(); return }
+
+        AlertDialog.Builder(this)
+            .setTitle("Ubicación en segundo plano")
+            .setMessage("Para que el modo Familiar comparta tu ubicación con la app cerrada, " +
+                "Android va a pedirte que elijas \"Permitir todo el tiempo\" en la siguiente pantalla.")
+            .setPositiveButton("Continuar") { _, _ ->
+                bgLocPerm.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+            }
+            .setNegativeButton("Solo con la app abierta") { _, _ ->
+                enableTracking() // funciona en primer plano; sin background prolongado
+            }
+            .setCancelable(false)
+            .show()
+    }
+
     private fun onSos() {
         if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) {
             SosCommand(this).trigger()
             toast("SOS activado: compartiendo tu ubicación.")
         } else {
-            sosPerms.launch(locationPermissions())
+            sosPerms.launch(foregroundLocationPerms())
         }
     }
 
@@ -136,12 +164,11 @@ class MainActivity : AppCompatActivity() {
         stopService(Intent(this, LocationService::class.java))
     }
 
-    private fun locationPermissions(): Array<String> {
+    private fun foregroundLocationPerms(): Array<String> {
         val perms = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
         )
-        // En Android 13+ también hace falta permiso para mostrar la notificación del servicio.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             perms.add(Manifest.permission.POST_NOTIFICATIONS)
         }
