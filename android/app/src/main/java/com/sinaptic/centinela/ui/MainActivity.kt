@@ -216,13 +216,10 @@ class MainActivity : AppCompatActivity() {
 
     /** Bloquea la pantalla y muestra una pantalla de "teléfono protegido" con el mensaje. */
     private fun lockWithMessage(message: String?) {
+        LostMessageActivity.show(this, message)
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = CentinelaDeviceAdminReceiver.componentName(this)
         if (dpm.isAdminActive(admin)) dpm.lockNow()
-        val msg = if (message.isNullOrBlank()) getString(R.string.lost_default) else message
-        startActivity(Intent(this, LostMessageActivity::class.java)
-            .putExtra("message", msg)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     /**

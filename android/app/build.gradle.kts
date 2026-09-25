@@ -3,6 +3,18 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Reconstruye la clave de firma (debug.keystore) desde su versión en texto base64.
+// El binario no siempre sobrevive a Git/GitHub Desktop; el texto sí. Así la firma es
+// SIEMPRE la misma y las actualizaciones se instalan encima sin "App no instalada".
+run {
+    val ksFile = file("debug.keystore")
+    val ksB64 = file("debug.keystore.base64")
+    if (!ksFile.exists() && ksB64.exists()) {
+        ksFile.writeBytes(java.util.Base64.getMimeDecoder().decode(ksB64.readText()))
+        println("debug.keystore reconstruido desde base64.")
+    }
+}
+
 android {
     namespace = "com.sinaptic.centinela"
     compileSdk = 34
@@ -11,10 +23,21 @@ android {
         applicationId = "com.sinaptic.centinela"
         minSdk = 26          // Android 8.0 — foreground services modernos
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
         // Base del backend; sobrescribir por buildType para prod.
         buildConfigField("String", "API_BASE_URL", "\"https://api.centinela.example.com\"")
+    }
+
+    // Clave de firma FIJA: así todas las versiones se instalan encima de la anterior
+    // (evita el error "App no instalada" y permite actualizaciones).
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {

@@ -105,15 +105,12 @@ class GuardianService : Service() {
     }
 
     private fun lock(message: String?) {
+        // Muestra el mensaje ANTES de bloquear: si primero se apaga la pantalla, el full-screen
+        // intent la vuelve a encender igual, pero así evitamos cualquier carrera.
+        LostMessageActivity.show(this, message)
         val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
         val admin = CentinelaDeviceAdminReceiver.componentName(this)
         if (dpm.isAdminActive(admin)) dpm.lockNow()
-        runCatching {
-            val msg = if (message.isNullOrBlank()) getString(R.string.lost_default) else message
-            startActivity(Intent(this, LostMessageActivity::class.java)
-                .putExtra("message", msg)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        }
     }
 
     override fun onDestroy() {
