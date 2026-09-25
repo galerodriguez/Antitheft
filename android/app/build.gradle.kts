@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.sinaptic.centinela"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.sinaptic.centinela"
         minSdk = 26          // Android 8.0 — foreground services modernos
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
         // Base del backend; sobrescribir por buildType para prod.
