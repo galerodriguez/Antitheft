@@ -80,12 +80,13 @@ class FirebaseSync(private val context: Context) {
         deviceDoc()?.set(mapOf("settings" to mapOf(key to value)), SetOptions.merge())
     }
 
-    /** Sube la última ubicación conocida. */
+    /** Sube la última ubicación conocida Y la agrega al historial. */
     fun uploadLocation(lat: Double, lng: Double) {
-        deviceDoc()?.set(
-            mapOf("lastLocation" to mapOf("lat" to lat, "lng" to lng, "ts" to System.currentTimeMillis())),
-            SetOptions.merge()
-        )
+        val doc = deviceDoc() ?: return
+        val ts = System.currentTimeMillis()
+        doc.set(mapOf("lastLocation" to mapOf("lat" to lat, "lng" to lng, "ts" to ts)), SetOptions.merge())
+        // Historial: un documento por ubicación (para ver el recorrido en el portal).
+        doc.collection("locations").add(mapOf("lat" to lat, "lng" to lng, "ts" to ts))
     }
 
     /**

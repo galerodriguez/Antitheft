@@ -11,7 +11,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.sinaptic.centinela.R
-import com.sinaptic.centinela.data.DeviceRepository
+import com.sinaptic.centinela.data.FirebaseSync
 
 /**
  * Servicio en primer plano que rastrea la ubicación periódicamente (modo Familiar o SOS).
@@ -26,9 +26,8 @@ class LocationService : Service() {
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             result.lastLocation?.let {
-                DeviceRepository(applicationContext).uploadLocation(
-                    it.latitude, it.longitude, it.accuracy, "tracking"
-                )
+                // Sube a Firestore (última ubicación + historial), visible en el portal.
+                FirebaseSync(applicationContext).uploadLocation(it.latitude, it.longitude)
             }
         }
     }

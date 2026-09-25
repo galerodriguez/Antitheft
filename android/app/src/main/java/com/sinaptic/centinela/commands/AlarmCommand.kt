@@ -12,6 +12,7 @@ import android.util.Log
 class AlarmCommand(private val context: Context) {
 
     fun start(durationSec: Int) {
+        stop() // cortar cualquier alarma previa para no dejar reproductores "huérfanos"
         val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         val max = am.getStreamMaxVolume(AudioManager.STREAM_ALARM)
         am.setStreamVolume(AudioManager.STREAM_ALARM, max, 0)

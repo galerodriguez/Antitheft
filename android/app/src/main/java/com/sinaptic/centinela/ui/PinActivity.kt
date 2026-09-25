@@ -1,6 +1,5 @@
 package com.sinaptic.centinela.ui
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -98,14 +97,10 @@ class PinActivity : AppCompatActivity() {
     }
 
     private fun success() {
-        if (mode == MODE_VERIFY) {
-            setResult(RESULT_OK); finish()
-        } else {
-            // SETUP o UNLOCK: marcamos el desbloqueo del proceso y volvemos a la principal.
-            MainActivity.unlockedThisProcess = true
-            startActivity(Intent(this, MainActivity::class.java))
-            finish()
-        }
+        // SETUP, UNLOCK y VERIFY: marcamos desbloqueado y devolvemos OK a quien nos llamó.
+        MainActivity.unlockedThisProcess = true
+        setResult(RESULT_OK)
+        finish()
     }
 
     private fun fail(msg: String) {

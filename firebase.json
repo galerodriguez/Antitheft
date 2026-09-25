@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "public": "web-panel",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "README.md",
+      "portal.html",
+      "app.js"
+    ]
+  }
+}
