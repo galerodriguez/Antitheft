@@ -1,0 +1,19 @@
+rules_version = '2';
+// Reglas de seguridad: cada usuario solo accede a sus propios dispositivos.
+// El backend usa Admin SDK (bypass de reglas); estas protegen el acceso directo desde clientes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /devices/{deviceId} {
+      allow read, write: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
+
+      match /{sub}/{docId} {
+        allow read, write: if request.auth != null
+          && get(/databases/$(database)/documents/devices/$(deviceId)).data.ownerUid == request.auth.uid;
+      }
+    }
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

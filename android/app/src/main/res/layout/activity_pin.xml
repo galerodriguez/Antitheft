@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg"
+    android:gravity="center_horizontal"
+    android:padding="24dp">
+
+    <ImageView
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginTop="48dp"
+        android:src="@drawable/ic_shield"
+        app:tint="@color/primary"
+        xmlns:app="http://schemas.android.com/apk/res-auto" />
+
+    <TextView
+        android:id="@+id/pinPrompt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:text="@string/pin_unlock_title"
+        android:textColor="@color/text"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/pinDisplay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:letterSpacing="0.4"
+        android:text=""
+        android:textColor="@color/primary"
+        android:textSize="34sp"
+        android:minHeight="44dp" />
+
+    <TextView
+        android:id="@+id/pinError"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text=""
+        android:textColor="@color/danger"
+        android:textSize="14sp" />
+
+    <!-- Teclado numérico -->
+    <GridLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:columnCount="3"
+        android:useDefaultMargins="true">
+
+        <Button style="@style/PinKey" android:text="1" android:tag="1" />
+        <Button style="@style/PinKey" android:text="2" android:tag="2" />
+        <Button style="@style/PinKey" android:text="3" android:tag="3" />
+        <Button style="@style/PinKey" android:text="4" android:tag="4" />
+        <Button style="@style/PinKey" android:text="5" android:tag="5" />
+        <Button style="@style/PinKey" android:text="6" android:tag="6" />
+        <Button style="@style/PinKey" android:text="7" android:tag="7" />
+        <Button style="@style/PinKey" android:text="8" android:tag="8" />
+        <Button style="@style/PinKey" android:text="9" android:tag="9" />
+        <Button android:id="@+id/keyDelete" style="@style/PinKey" android:text="⌫" />
+        <Button style="@style/PinKey" android:text="0" android:tag="0" />
+        <Button android:id="@+id/keyOk" style="@style/PinKey" android:text="✓" />
+    </GridLayout>
+</LinearLayout>

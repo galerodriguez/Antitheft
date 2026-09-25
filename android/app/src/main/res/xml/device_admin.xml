@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Políticas que la app puede ejercer como administrador de dispositivo. -->
+<device-admin xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-policies>
+        <force-lock />        <!-- bloquear pantalla remotamente -->
+        <wipe-data />         <!-- borrado remoto -->
+        <reset-password />    <!-- cambiar/forzar PIN en robo -->
+        <watch-login />       <!-- contar intentos fallidos (foto del intruso) -->
+    </uses-policies>
+</device-admin>

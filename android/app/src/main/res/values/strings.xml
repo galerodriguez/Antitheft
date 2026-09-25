@@ -1,0 +1,44 @@
+<resources>
+    <string name="app_name">Antitheft</string>
+
+    <!-- Onboarding / consentimiento -->
+    <string name="onboarding_consent_title">Tu seguridad, con tu consentimiento</string>
+    <string name="onboarding_consent_body">Antitheft puede localizar, bloquear o borrar este
+        dispositivo de forma remota si lo perdés o te lo roban. Para la función Familiar, la
+        ubicación se comparte con tu círculo de confianza. Nada se activa sin tu permiso, y
+        siempre verás una notificación cuando se comparta tu ubicación.</string>
+    <string name="onboarding_consent_points">• Localización, bloqueo y borrado remoto\n• Foto ante intentos de desbloqueo (opcional)\n• Alerta de cambio de SIM\n• Compartir ubicación con tu familia (opcional)</string>
+    <string name="onboarding_accept">Acepto y continuar</string>
+    <string name="onboarding_legal">Al continuar aceptás la política de privacidad y el uso
+        descrito. Podés desactivar cada función cuando quieras.</string>
+
+    <!-- PIN maestro -->
+    <string name="pin_setup_title">Creá tu PIN maestro</string>
+    <string name="pin_confirm_title">Repetí el PIN</string>
+    <string name="pin_unlock_title">Ingresá tu PIN</string>
+    <string name="pin_setup_body">Este PIN protege la app: se pide para abrirla y para
+        desactivar la protección antirrobo (paso previo a desinstalar). Guardalo bien: sin él
+        no vas a poder quitar la app.</string>
+    <string name="pin_wrong">PIN incorrecto</string>
+    <string name="pin_too_short">El PIN debe tener al menos 4 dígitos</string>
+    <string name="pin_mismatch">Los PIN no coinciden, probá de nuevo</string>
+
+    <!-- Pantalla principal -->
+    <string name="status_protected">Dispositivo protegido. Las funciones activas se muestran abajo.</string>
+    <string name="section_features">Funciones</string>
+    <string name="section_protection">Protección</string>
+    <string name="feature_antitheft_photo">Foto antirrobo</string>
+    <string name="feature_antitheft_photo_sub">Captura al intruso tras varios PIN fallidos</string>
+    <string name="feature_family">Compartir ubicación (Familiar)</string>
+    <string name="feature_family_sub">Muestra notificación mientras está activa</string>
+    <string name="enable_device_admin">Activar protección antirrobo (administrador)</string>
+    <string name="device_admin_explanation">Antitheft necesita permiso de administrador para
+        bloquear o borrar el dispositivo de forma remota si se pierde o es robado, y para exigir
+        el PIN antes de poder desinstalarla.</string>
+    <string name="sos_button">SOS</string>
+    <string name="sos_hint">Comparte tu ubicación en vivo y avisa a tus contactos de confianza.</string>
+
+    <!-- Notificación del servicio (neutra y honesta, no engañosa) -->
+    <string name="notif_title">Antitheft</string>
+    <string name="notif_text">Protección activa</string>
+</resources>

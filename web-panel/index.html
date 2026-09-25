@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Centinela — Panel</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --primary:#1f6feb; --text:#e6edf3; --muted:#8b949e; --danger:#da3633; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    header { padding:16px 24px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+    header h1 { font-size:18px; margin:0; }
+    .shield { color:var(--primary); font-size:22px; }
+    .layout { display:grid; grid-template-columns: 320px 1fr; height: calc(100vh - 57px); }
+    aside { border-right:1px solid var(--border); overflow-y:auto; padding:16px; }
+    .device { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; cursor:pointer; }
+    .device.active { border-color:var(--primary); }
+    .device h3 { margin:0 0 4px; font-size:15px; }
+    .device small { color:var(--muted); }
+    #map { height:100%; }
+    .commands { padding:16px; border-top:1px solid var(--border); }
+    .commands h2 { font-size:13px; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+    button { font:inherit; border:1px solid var(--border); background:var(--card); color:var(--text); padding:9px 12px; border-radius:8px; cursor:pointer; margin:0 6px 6px 0; }
+    button:hover { border-color:var(--primary); }
+    button.danger { border-color:var(--danger); color:#ff7b72; }
+    .empty { color:var(--muted); font-size:14px; padding:20px; text-align:center; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="shield">🛡️</span>
+    <h1>Centinela — Panel de control</h1>
+  </header>
+  <div class="layout">
+    <aside>
+      <div id="deviceList"><div class="empty">Cargando dispositivos…</div></div>
+      <div class="commands">
+        <h2>Comandos</h2>
+        <button onclick="send('LOCATE')">📍 Localizar</button>
+        <button onclick="send('ALARM',{durationSec:30})">🔊 Alarma</button>
+        <button onclick="send('LOCK',{message:'Teléfono perdido. Llamar 11-xxxx.'})">🔒 Bloquear</button>
+        <button onclick="send('PHOTO')">📷 Foto</button>
+        <button class="danger" onclick="wipe()">🗑️ Borrar datos</button>
+      </div>
+    </aside>
+    <div id="map"></div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
