@@ -43,9 +43,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.activity:activity-ktx:1.9.1")
 
-    // Firebase (push)
+    // Firebase (push + base de datos en tiempo real + login)
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-auth-ktx")
 
     // Ubicación y geocercas
     implementation("com.google.android.gms:play-services-location:21.3.0")

@@ -38,6 +38,24 @@
     <string name="sos_button">SOS</string>
     <string name="sos_hint">Comparte tu ubicación en vivo y avisa a tus contactos de confianza.</string>
 
+    <!-- Portal / cuenta -->
+    <string name="section_portal">Portal</string>
+    <string name="account_not_linked">No vinculado al portal.</string>
+    <string name="account_linked">Portal: %s</string>
+    <string name="btn_link">Vincular con el portal</string>
+    <string name="btn_unlink">Desvincular del portal</string>
+
+    <!-- Pantalla de vinculación -->
+    <string name="link_title">Vincular con el portal</string>
+    <string name="link_body">Ingresá con la misma cuenta que usás en el portal web. Así podés controlar este dispositivo de forma remota (activar/desactivar funciones, localizar, etc.).</string>
+    <string name="link_email_hint">Correo electrónico</string>
+    <string name="link_pass_hint">Contraseña (mínimo 6 caracteres)</string>
+    <string name="link_signin">Ingresar</string>
+    <string name="link_register">Crear cuenta nueva</string>
+    <string name="link_invalid">Ingresá un correo válido y una contraseña de 6+ caracteres.</string>
+    <string name="link_working">Conectando…</string>
+    <string name="link_error">No se pudo conectar. Revisá los datos e intentá de nuevo.</string>
+
     <!-- Notificación del servicio (neutra y honesta, no engañosa) -->
     <string name="notif_title">Antitheft</string>
     <string name="notif_text">Protección activa</string>

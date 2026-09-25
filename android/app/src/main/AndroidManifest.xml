@@ -41,6 +41,8 @@
             android:exported="false"
             android:excludeFromRecents="true" />
 
+        <activity android:name=".ui.LinkAccountActivity" android:exported="false" />
+
         <!-- Device Admin -->
         <receiver
             android:name=".admin.CentinelaDeviceAdminReceiver"

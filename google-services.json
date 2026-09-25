@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "760057514633",
+    "project_id": "antitheft-2b140",
+    "storage_bucket": "antitheft-2b140.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:760057514633:android:b30827d61c5f4a62dd9458",
+        "android_client_info": {
+          "package_name": "com.sinaptic.centinela"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAbX-b6eY5-mkn2XpNViyG7_jJ1ngQnQg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
