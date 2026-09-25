@@ -95,6 +95,10 @@
   .switch input:checked + .slider { background: color-mix(in srgb, var(--primary) 30%, transparent); border-color: var(--primary); }
   .switch input:checked + .slider::before { transform: translateX(19px); background: var(--primary); }
 
+  .statusrow { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip { display: inline-block; font-size: 13px; padding: 4px 10px; border-radius: 999px;
+    background: var(--card-2); border: 1px solid var(--border); }
+  .chip-when { font-size: 12px; color: var(--muted); }
   .cmds { display: flex; flex-wrap: wrap; gap: 10px; }
   #map { height: 300px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-top: 4px;
     background: var(--card-2); }
@@ -270,8 +274,13 @@
   function buildDetailSkeleton(ref) {
     $("detailWrap").innerHTML = `
       <div class="panel">
-        <h2 id="dName">Dispositivo</h2>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <h2 id="dName" style="flex:1;min-width:120px">Dispositivo</h2>
+          <button id="btnRename" class="btn-ghost" style="padding:6px 10px">Renombrar</button>
+          <button id="btnDelete" class="btn-danger" style="padding:6px 10px">Eliminar</button>
+        </div>
         <div class="sub" id="dModel"></div>
+        <div id="dStatus" class="statusrow"></div>
 
         <div class="section-label">Funciones</div>
         <div class="toggle-row first">
@@ -290,6 +299,7 @@
           <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
           <button id="cmdLock">Bloquear</button>
         </div>
+        <input id="lockMsg" placeholder="Mensaje para mostrar al bloquear (opcional)" style="margin-top:10px" />
 
         <div class="section-label">Ubicación</div>
         <div id="map"></div>
@@ -301,12 +311,51 @@
     $("cmdLocate").onclick = () => sendCommand(ref, "LOCATE");
     $("cmdAlarm").onclick = () => sendCommand(ref, "ALARM");
     $("cmdStopAlarm").onclick = () => sendCommand(ref, "STOP_ALARM");
-    $("cmdLock").onclick = () => sendCommand(ref, "LOCK");
+    $("cmdLock").onclick = () => sendCommand(ref, "LOCK", { message: $("lockMsg").value.trim() });
+    $("btnRename").onclick = () => {
+      const actual = $("dName").textContent;
+      const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);
+      if (nuevo && nuevo.trim()) ref.set({ name: nuevo.trim() }, { merge: true });
+    };
+    $("btnDelete").onclick = () => {
+      if (window.confirm("¿Eliminar este dispositivo del portal?\n\n(No desinstala la app del teléfono. El teléfono que esté en uso volverá a aparecer al sincronizar; borrá solo los duplicados viejos.)")) {
+        deleteDevice(ref);
+      }
+    };
+  }
+
+  async function deleteDevice(ref) {
+    try {
+      const locs = await ref.collection("locations").limit(500).get();
+      if (!locs.empty) {
+        const b = db.batch();
+        locs.forEach((d) => b.delete(d.ref));
+        await b.commit();
+      }
+      await ref.delete();
+      selectedId = null;
+      if (deviceUnsub) deviceUnsub();
+      if (locUnsub) locUnsub();
+      $("detailWrap").innerHTML = '<div class="panel"><div class="empty">Dispositivo eliminado. Elegí otro de la izquierda.</div></div>';
+    } catch (e) {
+      window.alert("No se pudo eliminar: " + (e.message || e));
+    }
   }
 
   function updateDetail(ref, d) {
     $("dName").textContent = d.name || "Dispositivo";
     $("dModel").textContent = d.model || "";
+    const st = d.status;
+    const stEl = $("dStatus");
+    if (stEl) {
+      if (st) {
+        const bat = (st.battery != null && st.battery >= 0) ? st.battery + "%" : "—";
+        const when = st.ts ? new Date(st.ts).toLocaleString() : "";
+        stEl.innerHTML = `<span class="chip">🔋 ${bat}</span> <span class="chip">📶 ${st.network || "—"}</span> <span class="chip-when">act.: ${when}</span>`;
+      } else {
+        stEl.innerHTML = '<span class="chip-when">Estado no disponible todavía.</span>';
+      }
+    }
     const s = d.settings || {};
     if ($("tgTracking")) $("tgTracking").checked = !!s.tracking;
     if ($("tgPhoto")) $("tgPhoto").checked = !!s.photo;
@@ -316,8 +365,10 @@
   function ensureMap() {
     if (map) return map;
     map = L.map("map", { zoomControl: true }).setView([-34.6037, -58.3816], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap"
+    // CARTO permite este uso (OSM bloquea el uso directo de sus servidores gratuitos).
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20, subdomains: "abcd",
+      attribution: "© OpenStreetMap, © CARTO"
     }).addTo(map);
     return map;
   }
@@ -375,8 +426,8 @@
     setTimeout(() => m.invalidateSize(), 100);
   }
 
-  function sendCommand(ref, type) {
+  function sendCommand(ref, type, extra) {
     const id = Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-    ref.set({ command: { type, id, ts: Date.now() } }, { merge: true });
+    ref.set({ command: Object.assign({ type, id, ts: Date.now() }, extra || {}) }, { merge: true });
   }
 </script>

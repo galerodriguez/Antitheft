@@ -274,9 +274,10 @@
   function buildDetailSkeleton(ref) {
     $("detailWrap").innerHTML = `
       <div class="panel">
-        <div style="display:flex;align-items:center;gap:10px">
-          <h2 id="dName" style="flex:1">Dispositivo</h2>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <h2 id="dName" style="flex:1;min-width:120px">Dispositivo</h2>
           <button id="btnRename" class="btn-ghost" style="padding:6px 10px">Renombrar</button>
+          <button id="btnDelete" class="btn-danger" style="padding:6px 10px">Eliminar</button>
         </div>
         <div class="sub" id="dModel"></div>
         <div id="dStatus" class="statusrow"></div>
@@ -316,6 +317,29 @@
       const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);
       if (nuevo && nuevo.trim()) ref.set({ name: nuevo.trim() }, { merge: true });
     };
+    $("btnDelete").onclick = () => {
+      if (window.confirm("¿Eliminar este dispositivo del portal?\n\n(No desinstala la app del teléfono. El teléfono que esté en uso volverá a aparecer al sincronizar; borrá solo los duplicados viejos.)")) {
+        deleteDevice(ref);
+      }
+    };
+  }
+
+  async function deleteDevice(ref) {
+    try {
+      const locs = await ref.collection("locations").limit(500).get();
+      if (!locs.empty) {
+        const b = db.batch();
+        locs.forEach((d) => b.delete(d.ref));
+        await b.commit();
+      }
+      await ref.delete();
+      selectedId = null;
+      if (deviceUnsub) deviceUnsub();
+      if (locUnsub) locUnsub();
+      $("detailWrap").innerHTML = '<div class="panel"><div class="empty">Dispositivo eliminado. Elegí otro de la izquierda.</div></div>';
+    } catch (e) {
+      window.alert("No se pudo eliminar: " + (e.message || e));
+    }
   }
 
   function updateDetail(ref, d) {
@@ -341,8 +365,10 @@
   function ensureMap() {
     if (map) return map;
     map = L.map("map", { zoomControl: true }).setView([-34.6037, -58.3816], 12);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19, attribution: "© OpenStreetMap"
+    // CARTO permite este uso (OSM bloquea el uso directo de sus servidores gratuitos).
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20, subdomains: "abcd",
+      attribution: "© OpenStreetMap, © CARTO"
     }).addTo(map);
     return map;
   }
