@@ -1,7 +1,5 @@
 name: Build APK
 
-# Compila la APK de debug automáticamente en cada push a main,
-# y también manualmente desde la pestaña "Actions" (Run workflow).
 on:
   push:
     branches: [ main ]
@@ -23,8 +21,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+      # El runner ubuntu-latest ya trae el SDK de Android preinstalado.
 
       - name: (Opcional) Restaurar google-services.json
         env:
@@ -32,12 +29,12 @@ jobs:
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
             echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
-            echo "google-services.json restaurado desde el secret (build CON Firebase)."
+            echo "google-services.json restaurado (build CON Firebase)."
           else
-            echo "Sin secret GOOGLE_SERVICES_JSON: build SIN Firebase (la APK instala y abre)."
+            echo "Sin secret: build SIN Firebase (la APK instala y abre)."
           fi
 
-      - name: Generar Gradle wrapper (versión pineada)
+      - name: Generar Gradle wrapper
         run: gradle wrapper --gradle-version 8.7
 
       - name: Compilar APK de debug
