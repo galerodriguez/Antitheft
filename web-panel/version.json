@@ -1,6 +1,6 @@
 {
-  "versionCode": 7,
-  "versionName": "0.6.0",
+  "versionCode": 8,
+  "versionName": "0.6.1",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Checklist de configuración guiada, alerta de SIM, foto del intruso y blindaje de segundo plano."
+  "notes": "El watchdog ahora también refresca el estado cada ~15 min aunque el servicio esté frenado."
 }
