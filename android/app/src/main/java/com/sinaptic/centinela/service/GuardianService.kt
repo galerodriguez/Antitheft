@@ -132,6 +132,7 @@ class GuardianService : Service() {
             "STOP_ALARM" -> AlarmCommand(this).stop()
             "LOCK" -> lock(message)
             "PHOTO" -> IntruderPhotoCommand(this).capture("remote")
+            "UPDATE" -> Updater.forceCheck(this)
         }
     }
 

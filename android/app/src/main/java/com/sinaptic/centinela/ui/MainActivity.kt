@@ -24,6 +24,7 @@ import com.google.android.gms.location.Priority
 import com.google.firebase.firestore.ListenerRegistration
 import com.sinaptic.centinela.R
 import com.sinaptic.centinela.admin.CentinelaDeviceAdminReceiver
+import com.sinaptic.centinela.admin.DeviceOwnerManager
 import com.sinaptic.centinela.commands.CommandDispatcher
 import com.sinaptic.centinela.data.DeviceRepository
 import com.sinaptic.centinela.data.FirebaseSync
@@ -173,6 +174,27 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSos).setOnClickListener { onSos() }
         findViewById<Button>(R.id.btnSetup).setOnClickListener {
             startActivity(Intent(this, SetupActivity::class.java))
+        }
+
+        // Solo con Device Owner: la app está bloqueada contra desinstalación.
+        // Este botón (protegido por el PIN de acceso) la libera para poder quitarla.
+        val btnAllow = findViewById<Button>(R.id.btnAllowUninstall)
+        if (DeviceOwnerManager.isDeviceOwner(this)) {
+            btnAllow.visibility = android.view.View.VISIBLE
+            btnAllow.setOnClickListener {
+                AlertDialog.Builder(this)
+                    .setTitle("Permitir desinstalar")
+                    .setMessage("La app está protegida contra desinstalación. Si continuás, " +
+                        "vas a poder desinstalarla desde Ajustes. ¿Seguro?")
+                    .setPositiveButton("Sí, permitir") { _, _ ->
+                        DeviceOwnerManager.allowUninstall(this)
+                        toast("Desinstalación habilitada. Ya podés quitar la app desde Ajustes.")
+                    }
+                    .setNegativeButton("Cancelar", null)
+                    .show()
+            }
+        } else {
+            btnAllow.visibility = android.view.View.GONE
         }
     }
 

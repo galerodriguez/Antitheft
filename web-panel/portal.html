@@ -366,6 +366,7 @@
           <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
           <button id="cmdLock">Bloquear</button>
           <button id="cmdPhoto">Tomar foto</button>
+          <button id="cmdUpdate">Actualizar app</button>
         </div>
         <input id="lockMsg" placeholder="Mensaje para mostrar al bloquear (opcional)" style="margin-top:10px" />
 
@@ -381,6 +382,7 @@
     $("cmdStopAlarm").onclick = () => sendCommand(ref, "STOP_ALARM");
     $("cmdLock").onclick = () => sendCommand(ref, "LOCK", { message: $("lockMsg").value.trim() });
     $("cmdPhoto").onclick = () => sendCommand(ref, "PHOTO");
+    $("cmdUpdate").onclick = () => sendCommand(ref, "UPDATE");
     $("btnRename").onclick = () => {
       const actual = $("dName").textContent;
       const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);

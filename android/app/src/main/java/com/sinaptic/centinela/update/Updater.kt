@@ -31,6 +31,13 @@ object Updater {
         .followRedirects(true).followSslRedirects(true)
         .build()
 
+    /** Fuerza el chequeo YA (ignora el intervalo). Lo dispara el botón del portal. */
+    fun forceCheck(ctx: Context) {
+        DeviceRepository(ctx).prefs().edit()
+            .putLong("last_update_check", System.currentTimeMillis()).apply()
+        Thread { runCatching { checkNow(ctx) }.onFailure { Log.w(TAG, "force update", it) } }.start()
+    }
+
     /** Chequea (respetando el intervalo) en un hilo aparte. Seguro de llamar seguido. */
     fun maybeCheck(ctx: Context) {
         val prefs = DeviceRepository(ctx).prefs()

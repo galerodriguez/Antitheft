@@ -1,6 +1,6 @@
 {
-  "versionCode": 8,
-  "versionName": "0.6.1",
+  "versionCode": 10,
+  "versionName": "0.7.1",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "El watchdog ahora también refresca el estado cada ~15 min aunque el servicio esté frenado."
+  "notes": "Botón 'Actualizar app' desde el portal y liberar desinstalación (Device Owner)."
 }

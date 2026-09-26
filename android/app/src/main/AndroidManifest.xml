@@ -45,6 +45,21 @@
         <!-- Checklist de configuración (permisos, batería, admin…) -->
         <activity android:name=".ui.SetupActivity" android:exported="false" />
 
+        <!-- Provisión por QR como Device Owner (Android 10+ exige responder estos intents) -->
+        <activity
+            android:name=".provisioning.ProvisioningActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter>
+                <action android:name="android.app.action.GET_PROVISIONING_MODE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.app.action.ADMIN_POLICY_COMPLIANCE" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Pantalla de PIN: bloqueo al abrir, setup del PIN maestro y verificación. -->
         <activity
             android:name=".ui.PinActivity"
