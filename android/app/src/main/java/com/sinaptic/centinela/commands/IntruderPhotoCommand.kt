@@ -20,9 +20,9 @@ class IntruderPhotoCommand(private val context: Context) {
             return
         }
         Log.i(TAG, "Capturando foto de intruso ($requestId)")
-        // TODO(camerax): abrir cámara frontal, tomar 1 foto, guardar en cacheDir.
-        // Al terminar:
-        // DeviceRepository(context).uploadIntruderPhoto(file, requestId)
+        // Lanza el servicio en primer plano (tipo cámara) que toma la foto y la sube.
+        runCatching { CaptureService.start(context, requestId) }
+            .onFailure { Log.w(TAG, "No se pudo iniciar la captura", it) }
     }
 
     /** Respeta la preferencia del usuario: la captura antirrobo es opt-in. */

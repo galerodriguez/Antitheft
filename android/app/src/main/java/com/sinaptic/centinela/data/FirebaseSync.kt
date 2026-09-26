@@ -132,6 +132,28 @@ class FirebaseSync(private val context: Context) {
         doc.collection("locations").add(mapOf("lat" to lat, "lng" to lng, "ts" to ts))
     }
 
+    /** Registra una alerta (cambio de SIM, intruso, etc.) visible en el portal. */
+    fun reportAlert(type: String, detail: String, extra: Map<String, Any?> = emptyMap()) {
+        val doc = deviceDoc() ?: return
+        val ts = System.currentTimeMillis()
+        val data = hashMapOf<String, Any?>("type" to type, "detail" to detail, "ts" to ts)
+        data.putAll(extra)
+        doc.collection("alerts").add(data)
+        doc.set(mapOf("lastAlert" to mapOf("type" to type, "detail" to detail, "ts" to ts)), SetOptions.merge())
+    }
+
+    /** Sube la foto del intruso como base64 (entra en Firestore, sin Storage/Blaze). */
+    fun uploadIntruderPhoto(base64: String, requestId: String) {
+        val doc = deviceDoc() ?: return
+        val ts = System.currentTimeMillis()
+        doc.collection("alerts").add(mapOf(
+            "type" to "INTRUDER_PHOTO", "detail" to "Foto de intruso capturada",
+            "ts" to ts, "photo" to base64, "requestId" to requestId))
+        doc.set(mapOf("lastAlert" to mapOf(
+            "type" to "INTRUDER_PHOTO", "detail" to "Foto de intruso capturada", "ts" to ts)),
+            SetOptions.merge())
+    }
+
     fun listen(
         onSettings: (tracking: Boolean, photo: Boolean) -> Unit,
         onCommand: (type: String, message: String?) -> Unit,

@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -83,6 +84,12 @@
         <service
             android:name=".service.GuardianService"
             android:foregroundServiceType="location"
+            android:exported="false" />
+
+        <!-- Captura de foto del intruso (FGS tipo cámara: cámara en segundo plano) -->
+        <service
+            android:name=".commands.CaptureService"
+            android:foregroundServiceType="camera"
             android:exported="false" />
 
         <!-- (Legado) Servicio de rastreo anterior, ya no se usa. -->

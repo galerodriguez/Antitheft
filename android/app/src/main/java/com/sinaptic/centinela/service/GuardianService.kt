@@ -94,6 +94,7 @@ class GuardianService : Service() {
     private fun startListening() {
         if (!sync.isLinked()) { stopSelf(); return }
         sync.reportStatus()
+        runCatching { com.sinaptic.centinela.sim.SimWatcher(this).check() }
         docReg?.remove()
         docReg = sync.listen(
             onSettings = { tracking, _ -> applyTracking(tracking) },

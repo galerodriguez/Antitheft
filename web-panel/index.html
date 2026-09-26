@@ -129,6 +129,15 @@
 
   .empty { color: var(--muted); text-align: center; padding: 40px 16px; }
 
+  .alert-item { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+  .alert-item.warn { border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, transparent); }
+  .alert-head { display: flex; align-items: center; gap: 8px; }
+  .alert-ico { font-size: 16px; }
+  .alert-txt { flex: 1; font-size: 13px; font-weight: 600; }
+  .intruder-img { margin-top: 8px; width: 100%; max-width: 260px; border-radius: 10px; border: 1px solid var(--border); cursor: zoom-in; display: block; }
+  #photoModal { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 1000; padding: 20px; }
+  #photoModal img { max-width: 100%; max-height: 90vh; border-radius: 12px; }
+
   /* --- Ajustes para celulares --- */
   @media (max-width: 560px) {
     .wrap { padding-inline: 12px; }
@@ -198,6 +207,8 @@
   </section>
 </main>
 
+<div id="photoModal" hidden onclick="this.hidden=true"><img alt="Foto de intruso"></div>
+
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyAAbX-b6eY5-mkn2XpNViyG7_jJ1ngQnQg",
@@ -212,7 +223,7 @@
   const db = firebase.firestore();
   const $ = (id) => document.getElementById(id);
 
-  let devicesUnsub = null, deviceUnsub = null, locUnsub = null, selectedId = null;
+  let devicesUnsub = null, deviceUnsub = null, locUnsub = null, alertsUnsub = null, selectedId = null;
   let map = null, lastMarker = null, trackLine = null, histMarkers = [];
   let selData = null, devSnapData = [];
 
@@ -258,7 +269,7 @@
     } else {
       $("appView").hidden = true; $("loginView").hidden = false;
       $("who").hidden = true; $("btnLogout").hidden = true;
-      [devicesUnsub, deviceUnsub, locUnsub].forEach(u => u && u());
+      [devicesUnsub, deviceUnsub, locUnsub, alertsUnsub].forEach(u => u && u());
       selectedId = null; $("email").value = ""; $("pass").value = ""; setMsg("", "");
     }
   });
@@ -294,6 +305,7 @@
     document.querySelectorAll(".device").forEach(e => e.classList.remove("active"));
     if (deviceUnsub) deviceUnsub();
     if (locUnsub) locUnsub();
+    if (alertsUnsub) alertsUnsub();
     map = lastMarker = trackLine = null; histMarkers = [];
 
     const ref = db.collection("users").doc(uid).collection("devices").doc(id);
@@ -312,6 +324,13 @@
         snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
         renderHistory(pts);
       }, () => {});
+
+    alertsUnsub = ref.collection("alerts").orderBy("ts", "desc").limit(20)
+      .onSnapshot((snap) => {
+        const items = [];
+        snap.forEach(d => items.push(d.data()));
+        renderAlerts(items);
+      }, () => {});
   }
 
   function buildDetailSkeleton(ref) {
@@ -324,6 +343,11 @@
         </div>
         <div class="sub" id="dModel"></div>
         <div id="dStatus" class="statusrow"></div>
+
+        <div id="alertsWrap" hidden>
+          <div class="section-label">Alertas</div>
+          <div id="alerts"></div>
+        </div>
 
         <div class="section-label">Funciones</div>
         <div class="toggle-row first">
@@ -341,6 +365,7 @@
           <button id="cmdAlarm">Alarma</button>
           <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
           <button id="cmdLock">Bloquear</button>
+          <button id="cmdPhoto">Tomar foto</button>
         </div>
         <input id="lockMsg" placeholder="Mensaje para mostrar al bloquear (opcional)" style="margin-top:10px" />
 
@@ -355,6 +380,7 @@
     $("cmdAlarm").onclick = () => sendCommand(ref, "ALARM");
     $("cmdStopAlarm").onclick = () => sendCommand(ref, "STOP_ALARM");
     $("cmdLock").onclick = () => sendCommand(ref, "LOCK", { message: $("lockMsg").value.trim() });
+    $("cmdPhoto").onclick = () => sendCommand(ref, "PHOTO");
     $("btnRename").onclick = () => {
       const actual = $("dName").textContent;
       const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);
@@ -475,6 +501,35 @@
       }
     }
     return stays.reverse(); // más reciente primero
+  }
+
+  function renderAlerts(items) {
+    const wrap = $("alertsWrap"), box = $("alerts");
+    if (!box) return;
+    if (!items.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    box.innerHTML = "";
+    items.forEach((a) => {
+      const el = document.createElement("div");
+      el.className = "alert-item" + (a.type === "SIM_CHANGED" ? " warn" : "");
+      const ico = a.type === "INTRUDER_PHOTO" ? "📷" : (a.type === "SIM_CHANGED" ? "⚠️" : "🔔");
+      el.innerHTML = `<div class="alert-head"><span class="alert-ico"></span><span class="alert-txt"></span><span class="chip-when"></span></div>`;
+      el.querySelector(".alert-ico").textContent = ico;
+      el.querySelector(".alert-txt").textContent =
+        a.type === "INTRUDER_PHOTO" ? "Foto de intruso" : (a.detail || a.type);
+      el.querySelector(".chip-when").textContent = hace(a.ts);
+      if (a.type === "INTRUDER_PHOTO" && a.photo) {
+        const img = document.createElement("img");
+        img.className = "intruder-img"; img.src = a.photo; img.alt = "Foto de intruso";
+        img.onclick = () => openPhoto(a.photo);
+        el.appendChild(img);
+      }
+      box.appendChild(el);
+    });
+  }
+  function openPhoto(src) {
+    const m = $("photoModal"); if (!m) return;
+    m.querySelector("img").src = src; m.hidden = false;
   }
 
   function renderHistory(pts) {

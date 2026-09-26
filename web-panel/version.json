@@ -1,6 +1,6 @@
 {
-  "versionCode": 5,
-  "versionName": "0.4.0",
+  "versionCode": 6,
+  "versionName": "0.5.0",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Blindaje de segundo plano, mapa Esri, historial agrupado y modo Device Owner."
+  "notes": "Alerta de cambio de SIM y foto del intruso, además del blindaje de segundo plano."
 }
