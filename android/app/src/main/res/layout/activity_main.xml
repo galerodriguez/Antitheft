@@ -48,6 +48,15 @@
             android:textColor="@color/text"
             android:textSize="15sp" />
 
+        <Button
+            android:id="@+id/btnSetup"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"
+            android:text="Estado de configuración"
+            android:textColor="@color/text"
+            android:background="@drawable/bg_card" />
+
         <!-- Cuenta / portal -->
         <TextView style="@style/SectionLabel" android:text="@string/section_portal" />
 

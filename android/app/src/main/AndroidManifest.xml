@@ -42,6 +42,9 @@
 
         <activity android:name=".ui.OnboardingActivity" android:exported="false" />
 
+        <!-- Checklist de configuración (permisos, batería, admin…) -->
+        <activity android:name=".ui.SetupActivity" android:exported="false" />
+
         <!-- Pantalla de PIN: bloqueo al abrir, setup del PIN maestro y verificación. -->
         <activity
             android:name=".ui.PinActivity"
