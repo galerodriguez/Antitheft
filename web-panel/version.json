@@ -1,6 +1,6 @@
 {
-  "versionCode": 10,
-  "versionName": "0.7.1",
+  "versionCode": 12,
+  "versionName": "0.7.3",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Botón 'Actualizar app' desde el portal y liberar desinstalación (Device Owner)."
+  "notes": "Comando 'Actualizar app' y 'Tomar foto' también funcionan con la app abierta."
 }

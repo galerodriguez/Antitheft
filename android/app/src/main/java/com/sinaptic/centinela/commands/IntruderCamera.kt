@@ -39,7 +39,7 @@ class IntruderCamera(private val context: Context) {
         val size = sizes.filter { it.width <= 1280 }.maxByOrNull { it.width.toLong() * it.height }
             ?: sizes.firstOrNull() ?: Size(640, 480)
 
-        val reader = ImageReader.newInstance(size.width, size.height, ImageFormat.JPEG, 1)
+        val reader = ImageReader.newInstance(size.width, size.height, ImageFormat.JPEG, 2)
         var camera: CameraDevice? = null
         var done = false
         fun finish(bytes: ByteArray?) {
@@ -51,9 +51,13 @@ class IntruderCamera(private val context: Context) {
             onResult(bytes)
         }
 
+        var frames = 0
         reader.setOnImageAvailableListener({ r ->
             runCatching {
                 val img = r.acquireLatestImage() ?: return@setOnImageAvailableListener
+                frames++
+                // Descartamos los primeros cuadros para que el sensor ajuste exposición.
+                if (frames < 4) { img.close(); return@setOnImageAvailableListener }
                 val buf = img.planes[0].buffer
                 val bytes = ByteArray(buf.remaining()); buf.get(bytes)
                 img.close()
@@ -66,16 +70,15 @@ class IntruderCamera(private val context: Context) {
                 override fun onOpened(device: CameraDevice) {
                     camera = device
                     runCatching {
-                        val req = device.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
+                        // Usamos TEMPLATE_PREVIEW + repeating: capturamos un cuadro del stream,
+                        // sin "disparo" de obturador → SIN sonido de cámara.
+                        val req = device.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
                         req.addTarget(reader.surface)
                         device.createCaptureSession(listOf(reader.surface),
                             object : CameraCaptureSession.StateCallback() {
                                 override fun onConfigured(session: CameraCaptureSession) {
-                                    // pequeño retardo para que el sensor ajuste exposición
-                                    handler.postDelayed({
-                                        runCatching { session.capture(req.build(), null, handler) }
-                                            .onFailure { finish(null) }
-                                    }, 500)
+                                    runCatching { session.setRepeatingRequest(req.build(), null, handler) }
+                                        .onFailure { finish(null) }
                                 }
                                 override fun onConfigureFailed(session: CameraCaptureSession) = finish(null)
                             }, handler)

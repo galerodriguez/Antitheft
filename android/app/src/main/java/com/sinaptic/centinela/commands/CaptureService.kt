@@ -3,9 +3,11 @@ package com.sinaptic.centinela.commands
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.Manifest
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -29,22 +31,33 @@ import java.io.ByteArrayOutputStream
 class CaptureService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForegroundCompat()
-        val requestId = intent?.getStringExtra(EXTRA_REQUEST) ?: "intruso"
+        // Nunca dejamos que este servicio crashee la app: todo va envuelto.
+        try {
+            if (!startForegroundSafe()) { stopSelf(); return START_NOT_STICKY }
 
-        if (!DeviceRepository(this).prefs().getBoolean("antitheft_photo_enabled", false)) {
-            Log.i(TAG, "Foto antirrobo deshabilitada; no capturo"); stopSelf(); return START_NOT_STICKY
-        }
-
-        IntruderCamera(this).capture { jpeg ->
-            runCatching {
-                if (jpeg != null) {
-                    val b64 = compressToBase64(jpeg)
-                    if (b64 != null) FirebaseSync(applicationContext).uploadIntruderPhoto(b64, requestId)
-                    Log.i(TAG, "Foto de intruso subida (${b64?.length ?: 0} chars)")
-                } else Log.w(TAG, "No se pudo capturar la foto")
+            // Sin permiso de cámara no intentamos nada (evita SecurityException).
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+                Log.w(TAG, "Sin permiso de cámara; no capturo"); stopSelf(); return START_NOT_STICKY
             }
-            stopSelf()
+            if (!DeviceRepository(this).prefs().getBoolean("antitheft_photo_enabled", false)) {
+                Log.i(TAG, "Foto antirrobo deshabilitada; no capturo"); stopSelf(); return START_NOT_STICKY
+            }
+
+            val requestId = intent?.getStringExtra(EXTRA_REQUEST) ?: "intruso"
+            IntruderCamera(this).capture { jpeg ->
+                runCatching {
+                    if (jpeg != null) {
+                        val b64 = compressToBase64(jpeg)
+                        if (b64 != null) FirebaseSync(applicationContext).uploadIntruderPhoto(b64, requestId)
+                        Log.i(TAG, "Foto de intruso subida (${b64?.length ?: 0} chars)")
+                    } else Log.w(TAG, "No se pudo capturar la foto")
+                }
+                runCatching { stopSelf() }
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "Fallo en captura, cierro sin romper la app", e)
+            runCatching { stopSelf() }
         }
         return START_NOT_STICKY
     }
@@ -68,7 +81,8 @@ class CaptureService : Service() {
         return "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
     }
 
-    private fun startForegroundCompat() {
+    /** Pasa a primer plano con tipo cámara. Devuelve false si el sistema no lo permite. */
+    private fun startForegroundSafe(): Boolean {
         val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             mgr.createNotificationChannel(
@@ -81,7 +95,14 @@ class CaptureService : Service() {
             .build()
         val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else 0
-        ServiceCompat.startForeground(this, NOTIF_ID, n, type)
+        return try {
+            ServiceCompat.startForeground(this, NOTIF_ID, n, type)
+            true
+        } catch (e: Throwable) {
+            // Android 14 puede bloquear FGS-cámara desde segundo plano. No rompemos la app.
+            Log.e(TAG, "No se pudo iniciar FGS de cámara", e)
+            false
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
