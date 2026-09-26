@@ -103,6 +103,11 @@
   .chip { display: inline-block; font-size: 13px; padding: 4px 10px; border-radius: 999px;
     background: var(--card-2); border: 1px solid var(--border); }
   .chip-when { font-size: 12px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+  .dot.on { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+  .dot.off { background: var(--danger); }
+  .chip.live-on { color: var(--good); border-color: color-mix(in srgb, var(--good) 40%, var(--border)); }
+  .chip.live-off { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
   .cmds { display: flex; flex-wrap: wrap; gap: 10px; }
   #map { height: 300px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-top: 4px;
     background: var(--card-2); }
@@ -209,6 +214,15 @@
 
   let devicesUnsub = null, deviceUnsub = null, locUnsub = null, selectedId = null;
   let map = null, lastMarker = null, trackLine = null, histMarkers = [];
+  let selData = null, devSnapData = [];
+
+  // Refresca los indicadores "en línea" aunque no lleguen datos nuevos (para pasar a rojo solo).
+  setInterval(() => {
+    if (selData && $("dStatus")) $("dStatus").innerHTML = statusHTML(selData.status);
+    document.querySelectorAll("#deviceList .device").forEach((el, i) => {
+      if (devSnapData[i]) deviceMeta(el.querySelector(".meta"), devSnapData[i]);
+    });
+  }, 30000);
 
   // ---- Auth ----
   $("btnSignIn").onclick = () => doAuth(false);
@@ -266,10 +280,11 @@
         el.className = "device" + (doc.id === selectedId ? " active" : "");
         el.innerHTML = '<div class="name"></div><div class="meta"></div>';
         el.querySelector(".name").textContent = d.name || "Dispositivo";
-        el.querySelector(".meta").textContent = (d.model || "") + " · " + (d.updatedAt ? new Date(d.updatedAt).toLocaleString() : "—");
+        deviceMeta(el.querySelector(".meta"), d);
         el.onclick = () => selectDevice(uid, doc.id);
         list.appendChild(el);
       });
+      devSnapData = snap.docs.map(dc => dc.data());
       if (!selectedId) selectDevice(uid, snap.docs[0].id);
     }, () => { $("deviceList").innerHTML = '<div class="empty">No se pudo leer. Revisá las reglas de Firestore.</div>'; });
   }
@@ -376,18 +391,17 @@
     const st = d.status;
     const stEl = $("dStatus");
     if (stEl) {
-      if (st) {
-        const bat = (st.battery != null && st.battery >= 0) ? st.battery + "%" : "—";
-        const when = st.ts ? new Date(st.ts).toLocaleString() : "";
-        stEl.innerHTML = `<span class="chip">🔋 ${bat}</span> <span class="chip">📶 ${st.network || "—"}</span> <span class="chip-when">act.: ${when}</span>`;
-      } else {
-        stEl.innerHTML = '<span class="chip-when">Estado no disponible todavía.</span>';
-      }
+      stEl.innerHTML = statusHTML(st);
     }
+    selData = d; // para refrescar el indicador "en línea" con un timer
     const s = d.settings || {};
     if ($("tgTracking")) $("tgTracking").checked = !!s.tracking;
     if ($("tgPhoto")) $("tgPhoto").checked = !!s.photo;
-    if (d.lastLocation) showOnMap([d.lastLocation], true);
+    // Solo dibujamos lastLocation si el historial todavía no puso marcadores (evita pelear con él).
+    if (d.lastLocation && histMarkers.length === 0) {
+      const ll = d.lastLocation;
+      showOnMap([{ lat: ll.lat, lng: ll.lng, startTs: ll.ts, endTs: ll.ts, count: 1 }], true);
+    }
   }
 
   function ensureMap() {
@@ -415,6 +429,29 @@
     return m ? `${h} h ${m} min` : `${h} h`;
   }
   function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+  // El teléfono late cada 5 min; con margen consideramos "en línea" si reportó hace < 12 min.
+  function estaEnLinea(ts) { return ts && (Date.now() - ts) < 12 * 60 * 1000; }
+  function statusHTML(st) {
+    if (!st) return '<span class="chip live-off"><span class="dot off"></span>Sin datos</span> <span class="chip-when">Aún no reportó estado.</span>';
+    const bat = (st.battery != null && st.battery >= 0) ? st.battery + "%" : "—";
+    const online = estaEnLinea(st.ts);
+    const live = `<span class="chip ${online ? "live-on" : "live-off"}"><span class="dot ${online ? "on" : "off"}"></span>${online ? "En línea" : "Sin conexión"}</span>`;
+    return `${live} <span class="chip">🔋 ${bat}</span> <span class="chip">📶 ${st.network || "—"}</span> <span class="chip-when">${hace(st.ts)}</span>`;
+  }
+  function deviceMeta(metaEl, d) {
+    if (!metaEl) return;
+    const online = estaEnLinea(d.status?.ts);
+    metaEl.innerHTML = `<span class="dot ${online ? "on" : "off"}"></span>`;
+    metaEl.appendChild(document.createTextNode((d.model || "") + " · " + hace(d.status?.ts)));
+  }
+  function hace(ts) {
+    if (!ts) return "—";
+    const s = Math.floor((Date.now() - ts) / 1000);
+    if (s < 60) return "recién";
+    const m = Math.floor(s / 60); if (m < 60) return `hace ${m} min`;
+    const h = Math.floor(m / 60); if (h < 24) return `hace ${h} h`;
+    const d = Math.floor(h / 24); return `hace ${d} día${d > 1 ? "s" : ""}`;
+  }
   function dayLabel(ts) {
     const d = new Date(ts), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
     const same = (a, b) => a.toDateString() === b.toDateString();
@@ -495,7 +532,8 @@
     }
     ordered.forEach((s, idx) => {
       const newest = idx === ordered.length - 1;
-      const durMs = s.endTs - s.startTs;
+      const startTs = s.startTs ?? s.ts, endTs = s.endTs ?? s.ts;
+      const durMs = (endTs || 0) - (startTs || 0);
       const mk = L.circleMarker([s.lat, s.lng], {
         radius: newest ? 9 : (durMs > 60000 ? 7 : 5),
         color: newest ? "#1f6feb" : "#8b949e",
@@ -503,9 +541,9 @@
         fillOpacity: newest ? 1 : .65, weight: 2
       }).addTo(m);
       const range = durMs > 60000
-        ? `${fmtTime(s.startTs)} – ${fmtTime(s.endTs)} (${fmtDur(durMs)})`
-        : fmtTime(s.startTs);
-      mk.bindPopup((newest ? "<b>Última ubicación</b><br>" : "") + dayLabel(s.startTs) + "<br>" + range);
+        ? `${fmtTime(startTs)} – ${fmtTime(endTs)} (${fmtDur(durMs)})`
+        : fmtTime(startTs);
+      mk.bindPopup((newest ? "<b>Última ubicación</b><br>" : "") + dayLabel(startTs) + "<br>" + range);
       histMarkers.push(mk);
     });
 

@@ -19,6 +19,8 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Correr sin límites de batería: clave para sobrevivir con la app cerrada -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Auto-actualización: instalar la APK nueva -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".CentinelaApp"
@@ -103,6 +105,11 @@
         <!-- Watchdog: revive el servicio guardián periódicamente si el sistema lo mató -->
         <receiver
             android:name=".service.WatchdogReceiver"
+            android:exported="false" />
+
+        <!-- Estado de la auto-actualización (PackageInstaller) -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
             android:exported="false" />
 
         <!-- Recepción de geocercas -->

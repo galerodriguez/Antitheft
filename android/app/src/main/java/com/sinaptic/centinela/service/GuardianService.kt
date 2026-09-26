@@ -25,6 +25,8 @@ import com.google.android.gms.location.Priority
 import com.google.firebase.firestore.ListenerRegistration
 import com.sinaptic.centinela.R
 import com.sinaptic.centinela.admin.CentinelaDeviceAdminReceiver
+import com.sinaptic.centinela.admin.DeviceOwnerManager
+import com.sinaptic.centinela.update.Updater
 import com.sinaptic.centinela.commands.AlarmCommand
 import com.sinaptic.centinela.commands.IntruderPhotoCommand
 import com.sinaptic.centinela.data.DeviceRepository
@@ -72,6 +74,10 @@ class GuardianService : Service() {
         heartbeat.postDelayed(heartbeatTask, HEARTBEAT_MS)
         // Programa el watchdog que revive el servicio si el sistema lo mata.
         BackgroundGuard.scheduleWatchdog(this)
+        // Si la app es Device Owner, aplica el blindaje fuerte (no-desinstalable, GPS forzado…).
+        DeviceOwnerManager.applyIfOwner(this)
+        // Chequea si hay una versión nueva (respeta un intervalo interno de 6 h).
+        Updater.maybeCheck(this)
     }
 
     /** Si el usuario (o el sistema) quita la app de "recientes", reprogramamos el arranque. */
