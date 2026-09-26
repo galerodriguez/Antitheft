@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -10,7 +12,7 @@ run {
     val ksFile = file("debug.keystore")
     val ksB64 = file("debug.keystore.base64")
     if (!ksFile.exists() && ksB64.exists()) {
-        ksFile.writeBytes(java.util.Base64.getMimeDecoder().decode(ksB64.readText()))
+        ksFile.writeBytes(Base64.getMimeDecoder().decode(ksB64.readText()))
         println("debug.keystore reconstruido desde base64.")
     }
 }
