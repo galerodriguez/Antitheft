@@ -70,6 +70,14 @@ class GuardianService : Service() {
         // Arranca el latido (el primer reporte ya lo hizo startListening()).
         heartbeat.removeCallbacks(heartbeatTask)
         heartbeat.postDelayed(heartbeatTask, HEARTBEAT_MS)
+        // Programa el watchdog que revive el servicio si el sistema lo mata.
+        BackgroundGuard.scheduleWatchdog(this)
+    }
+
+    /** Si el usuario (o el sistema) quita la app de "recientes", reprogramamos el arranque. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        BackgroundGuard.scheduleWatchdog(this)
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

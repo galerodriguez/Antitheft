@@ -17,6 +17,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Correr sin límites de batería: clave para sobrevivir con la app cerrada -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".CentinelaApp"
@@ -87,14 +89,21 @@
             android:foregroundServiceType="location"
             android:exported="false" />
 
-        <!-- Reprograma vigilancia + guarda SIM tras reinicio -->
+        <!-- Reprograma vigilancia + guarda SIM tras reinicio o actualización de la app -->
         <receiver
             android:name=".sim.BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- Watchdog: revive el servicio guardián periódicamente si el sistema lo mató -->
+        <receiver
+            android:name=".service.WatchdogReceiver"
+            android:exported="false" />
 
         <!-- Recepción de geocercas -->
         <receiver

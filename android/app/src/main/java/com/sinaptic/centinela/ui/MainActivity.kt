@@ -28,6 +28,7 @@ import com.sinaptic.centinela.commands.CommandDispatcher
 import com.sinaptic.centinela.data.DeviceRepository
 import com.sinaptic.centinela.data.FirebaseSync
 import com.sinaptic.centinela.data.PinManager
+import com.sinaptic.centinela.service.BackgroundGuard
 import com.sinaptic.centinela.service.GuardianService
 import com.sinaptic.centinela.sos.SosCommand
 
@@ -196,6 +197,13 @@ class MainActivity : AppCompatActivity() {
         // Con permiso de ubicación, dejamos corriendo el guardián para recibir comandos
         // aunque después cierres la app.
         if (hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) GuardianService.start(this)
+
+        // Blindaje para "configurar una vez y no abrir nunca más":
+        BackgroundGuard.scheduleWatchdog(this)
+        if (!batteryPromptShown && !BackgroundGuard.isIgnoringBatteryOptimizations(this)) {
+            batteryPromptShown = true
+            BackgroundGuard.promptIgnoreBatteryOptimizations(this)
+        }
     }
 
     private fun applyRemoteSettings(tracking: Boolean, photo: Boolean) {
@@ -285,6 +293,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Desvincular") { _, _ ->
                 sync.signOut(); listener?.remove(); listener = null
                 stopService(Intent(this, GuardianService::class.java))
+                BackgroundGuard.cancelWatchdog(this)
                 refreshAccountUi()
             }
             .setNegativeButton("Cancelar", null)
@@ -355,5 +364,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         @JvmStatic
         var unlockedThisProcess = false
+        // Evita repetir el diálogo de batería dentro de la misma sesión de la app.
+        @JvmStatic
+        var batteryPromptShown = false
     }
 }
