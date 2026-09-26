@@ -171,6 +171,9 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnDeviceAdmin).setOnClickListener { requestDeviceAdmin() }
         findViewById<Button>(R.id.btnSos).setOnClickListener { onSos() }
+        findViewById<Button>(R.id.btnSetup).setOnClickListener {
+            startActivity(Intent(this, SetupActivity::class.java))
+        }
     }
 
     private fun refreshAccountUi() {
@@ -200,9 +203,10 @@ class MainActivity : AppCompatActivity() {
 
         // Blindaje para "configurar una vez y no abrir nunca más":
         BackgroundGuard.scheduleWatchdog(this)
-        if (!batteryPromptShown && !BackgroundGuard.isIgnoringBatteryOptimizations(this)) {
-            batteryPromptShown = true
-            BackgroundGuard.promptIgnoreBatteryOptimizations(this)
+        // Si falta configurar algo crítico, abrimos el checklist una vez.
+        if (!setupAutoShown && SetupActivity.criticalPending(this) > 0) {
+            setupAutoShown = true
+            startActivity(Intent(this, SetupActivity::class.java))
         }
     }
 
@@ -364,8 +368,8 @@ class MainActivity : AppCompatActivity() {
     companion object {
         @JvmStatic
         var unlockedThisProcess = false
-        // Evita repetir el diálogo de batería dentro de la misma sesión de la app.
+        // Evita reabrir el checklist de configuración dentro de la misma sesión de la app.
         @JvmStatic
-        var batteryPromptShown = false
+        var setupAutoShown = false
     }
 }

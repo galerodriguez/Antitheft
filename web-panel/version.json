@@ -1,6 +1,6 @@
 {
-  "versionCode": 6,
-  "versionName": "0.5.0",
+  "versionCode": 7,
+  "versionName": "0.6.0",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Alerta de cambio de SIM y foto del intruso, además del blindaje de segundo plano."
+  "notes": "Checklist de configuración guiada, alerta de SIM, foto del intruso y blindaje de segundo plano."
 }
