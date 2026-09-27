@@ -138,6 +138,13 @@
     cursor: pointer; padding: 2px 6px; border-radius: 8px; line-height: 1; }
   .alert-x:hover { background: var(--card-2); color: var(--danger); border-color: transparent; }
   .intruder-img { margin-top: 8px; width: 100%; max-width: 260px; border-radius: 10px; border: 1px solid var(--border); cursor: zoom-in; display: block; }
+  .photo-item { display: flex; gap: 12px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--border); }
+  .photo-item:first-child { border-top: none; }
+  .photo-thumb { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); cursor: zoom-in; flex: none; }
+  .photo-meta { flex: 1; min-width: 0; }
+  .photo-time { font-size: 13px; color: var(--text); margin-bottom: 6px; }
+  .photo-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .photo-acts button { padding: 5px 10px; font-size: 12px; }
   #photoModal { position: fixed; inset: 0; background: rgba(0,0,0,.85); display: grid; place-items: center; z-index: 1000; padding: 20px; }
   #photoModal img { max-width: 100%; max-height: 90vh; border-radius: 12px; }
 
@@ -328,11 +335,12 @@
         renderHistory(pts);
       }, () => {});
 
-    alertsUnsub = ref.collection("alerts").orderBy("ts", "desc").limit(20)
+    alertsUnsub = ref.collection("alerts").orderBy("ts", "desc").limit(40)
       .onSnapshot((snap) => {
-        const items = [];
-        snap.forEach(d => items.push(Object.assign({ _id: d.id }, d.data())));
-        renderAlerts(items, ref);
+        const all = [];
+        snap.forEach(d => all.push(Object.assign({ _id: d.id }, d.data())));
+        renderAlerts(all.filter(a => a.type !== "INTRUDER_PHOTO"), ref);
+        renderPhotos(all.filter(a => a.type === "INTRUDER_PHOTO"), ref);
       }, () => {});
   }
 
@@ -350,6 +358,11 @@
         <div id="alertsWrap" hidden>
           <div class="section-label">Alertas</div>
           <div id="alerts"></div>
+        </div>
+
+        <div id="photosWrap" hidden>
+          <div class="section-label">Fotos de intruso</div>
+          <div id="photos" class="history"></div>
         </div>
 
         <div class="section-label">Funciones</div>
@@ -544,6 +557,56 @@
   function openPhoto(src) {
     const m = $("photoModal"); if (!m) return;
     m.querySelector("img").src = src; m.hidden = false;
+  }
+  function downloadPhoto(src, ts) {
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = "intruso_" + new Date(ts || Date.now()).toISOString().replace(/[:.]/g, "-") + ".jpg";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  // Panel dedicado de fotos de intruso: lista por día, con vista previa, descargar y eliminar.
+  function renderPhotos(items, ref) {
+    const wrap = $("photosWrap"), box = $("photos");
+    if (!box) return;
+    if (!items.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    box.innerHTML = "";
+    let lastDay = null;
+    items.forEach((a) => {
+      const dl = dayLabel(a.ts);
+      if (dl !== lastDay) {
+        lastDay = dl;
+        const hd = document.createElement("div");
+        hd.className = "hist-day"; hd.textContent = dl;
+        box.appendChild(hd);
+      }
+      const row = document.createElement("div");
+      row.className = "photo-item";
+      const img = document.createElement("img");
+      img.className = "photo-thumb"; img.src = a.photo; img.alt = "Foto de intruso";
+      img.onclick = () => openPhoto(a.photo);
+      const meta = document.createElement("div");
+      meta.className = "photo-meta";
+      const time = document.createElement("div");
+      time.className = "photo-time";
+      time.textContent = a.ts ? new Date(a.ts).toLocaleString() : "—";
+      const acts = document.createElement("div");
+      acts.className = "photo-acts";
+      const bView = document.createElement("button");
+      bView.textContent = "Ver"; bView.onclick = () => openPhoto(a.photo);
+      const bDl = document.createElement("button");
+      bDl.textContent = "Descargar"; bDl.onclick = () => downloadPhoto(a.photo, a.ts);
+      const bDel = document.createElement("button");
+      bDel.className = "btn-danger"; bDel.textContent = "Eliminar";
+      bDel.onclick = () => {
+        if (ref && a._id && window.confirm("¿Eliminar esta foto? No se puede deshacer."))
+          ref.collection("alerts").doc(a._id).delete().catch(() => {});
+      };
+      acts.appendChild(bView); acts.appendChild(bDl); acts.appendChild(bDel);
+      meta.appendChild(time); meta.appendChild(acts);
+      row.appendChild(img); row.appendChild(meta);
+      box.appendChild(row);
+    });
   }
 
   function renderHistory(pts) {
