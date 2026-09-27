@@ -28,6 +28,18 @@ class LostMessageActivity : AppCompatActivity() {
         setContentView(R.layout.activity_lost)
         findViewById<TextView>(R.id.lostMsg).text =
             intent.getStringExtra(EXTRA_MESSAGE) ?: getString(R.string.lost_default)
+        current = this
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        findViewById<TextView>(R.id.lostMsg).text =
+            intent.getStringExtra(EXTRA_MESSAGE) ?: getString(R.string.lost_default)
+    }
+
+    override fun onDestroy() {
+        if (current === this) current = null
+        super.onDestroy()
     }
 
     // No permitir salir con el botón atrás.
@@ -38,6 +50,19 @@ class LostMessageActivity : AppCompatActivity() {
         const val EXTRA_MESSAGE = "message"
         private const val CHANNEL = "centinela_lost"
         private const val NOTIF_ID = 2001
+
+        // Referencia a la pantalla actual, para poder cerrarla desde el comando UNLOCK.
+        @Volatile private var current: LostMessageActivity? = null
+
+        /** Cierra la pantalla de bloqueo/mensaje y quita la notificación (comando UNLOCK). */
+        fun dismiss(context: Context) {
+            runCatching { current?.finish() }
+            current = null
+            runCatching {
+                val mgr = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                mgr.cancel(NOTIF_ID)
+            }
+        }
 
         /**
          * Muestra la pantalla de "teléfono perdido" de forma FIABLE, incluso con la app cerrada

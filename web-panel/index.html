@@ -236,6 +236,7 @@
   let devicesUnsub = null, deviceUnsub = null, locUnsub = null, alertsUnsub = null, selectedId = null;
   let map = null, lastMarker = null, trackLine = null, histMarkers = [];
   let selData = null, devSnapData = [];
+  let followTimer = null, lastPts = [];
 
   // Refresca los indicadores "en línea" aunque no lleguen datos nuevos (para pasar a rojo solo).
   setInterval(() => {
@@ -279,6 +280,7 @@
     } else {
       $("appView").hidden = true; $("loginView").hidden = false;
       $("who").hidden = true; $("btnLogout").hidden = true;
+      stopFollow();
       [devicesUnsub, deviceUnsub, locUnsub, alertsUnsub].forEach(u => u && u());
       selectedId = null; $("email").value = ""; $("pass").value = ""; setMsg("", "");
     }
@@ -316,6 +318,7 @@
     if (deviceUnsub) deviceUnsub();
     if (locUnsub) locUnsub();
     if (alertsUnsub) alertsUnsub();
+    stopFollow();
     map = lastMarker = trackLine = null; histMarkers = [];
 
     const ref = db.collection("users").doc(uid).collection("devices").doc(id);
@@ -381,12 +384,18 @@
           <button id="cmdAlarm">Alarma</button>
           <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
           <button id="cmdLock">Bloquear</button>
+          <button id="cmdMessage">Enviar mensaje</button>
+          <button id="cmdUnlock">Desbloquear</button>
           <button id="cmdPhoto">Tomar foto</button>
           <button id="cmdUpdate">Actualizar app</button>
         </div>
-        <input id="lockMsg" placeholder="Mensaje para mostrar al bloquear (opcional)" style="margin-top:10px" />
+        <input id="lockMsg" placeholder="Mensaje (bloquear / mostrar / decir en la alarma)" style="margin-top:10px" />
 
         <div class="section-label">Ubicación</div>
+        <div class="cmds" style="margin-bottom:10px">
+          <button id="btnFollow">▶ Seguir en vivo</button>
+          <button id="btnKml">Exportar recorrido (KML)</button>
+        </div>
         <div id="map"></div>
         <div id="history" class="history"></div>
       </div>`;
@@ -394,11 +403,19 @@
     $("tgTracking").onchange = (e) => ref.set({ settings: { tracking: e.target.checked } }, { merge: true });
     $("tgPhoto").onchange = (e) => ref.set({ settings: { photo: e.target.checked } }, { merge: true });
     $("cmdLocate").onclick = () => sendCommand(ref, "LOCATE");
-    $("cmdAlarm").onclick = () => sendCommand(ref, "ALARM");
+    $("cmdAlarm").onclick = () => sendCommand(ref, "ALARM", { message: $("lockMsg").value.trim() });
     $("cmdStopAlarm").onclick = () => sendCommand(ref, "STOP_ALARM");
     $("cmdLock").onclick = () => sendCommand(ref, "LOCK", { message: $("lockMsg").value.trim() });
+    $("cmdMessage").onclick = () => {
+      const m = $("lockMsg").value.trim();
+      if (!m) { window.alert("Escribí un mensaje primero."); return; }
+      sendCommand(ref, "MESSAGE", { message: m });
+    };
+    $("cmdUnlock").onclick = () => sendCommand(ref, "UNLOCK");
     $("cmdPhoto").onclick = () => sendCommand(ref, "PHOTO");
     $("cmdUpdate").onclick = () => sendCommand(ref, "UPDATE");
+    $("btnFollow").onclick = () => toggleFollow(ref);
+    $("btnKml").onclick = () => exportKml();
     $("btnRename").onclick = () => {
       const actual = $("dName").textContent;
       const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);
@@ -558,6 +575,40 @@
     const m = $("photoModal"); if (!m) return;
     m.querySelector("img").src = src; m.hidden = false;
   }
+
+  // Rastreo en vivo: manda "Localizar" cada 30 s mientras esté activo.
+  function stopFollow() {
+    if (followTimer) { clearInterval(followTimer); followTimer = null; }
+    const b = $("btnFollow");
+    if (b) { b.textContent = "▶ Seguir en vivo"; b.classList.remove("btn-primary"); }
+  }
+  function toggleFollow(ref) {
+    const b = $("btnFollow");
+    if (followTimer) { stopFollow(); return; }
+    sendCommand(ref, "LOCATE");
+    followTimer = setInterval(() => sendCommand(ref, "LOCATE"), 30000);
+    b.textContent = "⏸ Siguiendo… (cada 30 s)"; b.classList.add("btn-primary");
+  }
+
+  // Exporta el recorrido cargado en el mapa a un archivo KML (Google Earth / Maps).
+  function exportKml() {
+    if (!lastPts.length) { window.alert("No hay ubicaciones para exportar todavía."); return; }
+    const asc = [...lastPts].reverse();
+    const line = asc.map(p => `${p.lng},${p.lat},0`).join(" ");
+    const marks = asc.map(p =>
+      `<Placemark><name>${p.ts ? new Date(p.ts).toLocaleString() : ""}</name>` +
+      `<Point><coordinates>${p.lng},${p.lat},0</coordinates></Point></Placemark>`).join("");
+    const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Recorrido Antitheft</name>
+<Placemark><name>Recorrido</name><LineString><tessellate>1</tessellate><coordinates>${line}</coordinates></LineString></Placemark>
+${marks}</Document></kml>`;
+    const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "recorrido_" + new Date().toISOString().slice(0, 10) + ".kml";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
   function downloadPhoto(src, ts) {
     const a = document.createElement("a");
     a.href = src;
@@ -610,6 +661,7 @@
   }
 
   function renderHistory(pts) {
+    lastPts = pts || [];
     const h = $("history");
     if (!h) return;
     if (!pts.length) {

@@ -72,6 +72,7 @@
         <activity
             android:name=".ui.LostMessageActivity"
             android:exported="false"
+            android:launchMode="singleTop"
             android:showWhenLocked="true"
             android:turnScreenOn="true"
             android:excludeFromRecents="true" />

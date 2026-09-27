@@ -1,6 +1,6 @@
 {
-  "versionCode": 12,
-  "versionName": "0.7.3",
+  "versionCode": 13,
+  "versionName": "0.8.0",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Comando 'Actualizar app' y 'Tomar foto' también funcionan con la app abierta."
+  "notes": "Ráfaga de fotos, foto+ubicación al cambiar SIM, alarma hablada, enviar mensaje sin bloquear y desbloqueo remoto."
 }

@@ -128,9 +128,11 @@ class GuardianService : Service() {
                         if (l != null) sync.uploadLocation(l.latitude, l.longitude)
                     }
                 }
-            "ALARM" -> AlarmCommand(this).start(60)
+            "ALARM" -> AlarmCommand(this).start(60, message)
             "STOP_ALARM" -> AlarmCommand(this).stop()
             "LOCK" -> lock(message)
+            "MESSAGE" -> LostMessageActivity.show(this, message)   // mostrar sin bloquear
+            "UNLOCK" -> { AlarmCommand(this).stop(); LostMessageActivity.dismiss(this) }
             "PHOTO" -> IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> Updater.forceCheck(this)
         }

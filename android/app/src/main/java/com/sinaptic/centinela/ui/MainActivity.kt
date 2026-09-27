@@ -243,6 +243,8 @@ class MainActivity : AppCompatActivity() {
         when (type.uppercase()) {
             "LOCATE" -> fetchAndUploadLocation()
             "LOCK" -> lockWithMessage(message)
+            "MESSAGE" -> LostMessageActivity.show(this, message)
+            "UNLOCK" -> { com.sinaptic.centinela.commands.AlarmCommand(this).stop(); LostMessageActivity.dismiss(this) }
             "PHOTO" -> com.sinaptic.centinela.commands.IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> com.sinaptic.centinela.update.Updater.forceCheck(this)
             else -> CommandDispatcher(this).dispatch(type, "", emptyMap())

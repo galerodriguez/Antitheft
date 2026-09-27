@@ -45,13 +45,16 @@ class CaptureService : Service() {
             }
 
             val requestId = intent?.getStringExtra(EXTRA_REQUEST) ?: "intruso"
-            IntruderCamera(this).capture { jpeg ->
+            IntruderCamera(this).capture(count = 3) { shots ->
                 runCatching {
-                    if (jpeg != null) {
-                        val b64 = compressToBase64(jpeg)
-                        if (b64 != null) FirebaseSync(applicationContext).uploadIntruderPhoto(b64, requestId)
-                        Log.i(TAG, "Foto de intruso subida (${b64?.length ?: 0} chars)")
-                    } else Log.w(TAG, "No se pudo capturar la foto")
+                    if (shots.isNotEmpty()) {
+                        val sync = FirebaseSync(applicationContext)
+                        shots.forEach { jpeg ->
+                            val b64 = compressToBase64(jpeg)
+                            if (b64 != null) sync.uploadIntruderPhoto(b64, requestId)
+                        }
+                        Log.i(TAG, "Ráfaga subida: ${shots.size} foto(s)")
+                    } else Log.w(TAG, "No se pudo capturar la ráfaga")
                 }
                 runCatching { stopSelf() }
             }

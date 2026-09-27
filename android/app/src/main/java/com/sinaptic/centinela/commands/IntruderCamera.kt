@@ -22,13 +22,14 @@ import androidx.core.content.ContextCompat
  */
 class IntruderCamera(private val context: Context) {
 
-    fun capture(onResult: (ByteArray?) -> Unit) {
+    /** Captura una ráfaga de `count` fotos del stream (sin sonido) y las devuelve juntas. */
+    fun capture(count: Int = 3, onResult: (List<ByteArray>) -> Unit) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED) { onResult(null); return }
+            != PackageManager.PERMISSION_GRANTED) { onResult(emptyList()); return }
 
         val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val camId = frontCameraId(manager) ?: run {
-            Log.w(TAG, "No hay cámara frontal"); onResult(null); return
+            Log.w(TAG, "No hay cámara frontal"); onResult(emptyList()); return
         }
         val thread = HandlerThread("intruder-cam").apply { start() }
         val handler = Handler(thread.looper)
@@ -39,16 +40,17 @@ class IntruderCamera(private val context: Context) {
         val size = sizes.filter { it.width <= 1280 }.maxByOrNull { it.width.toLong() * it.height }
             ?: sizes.firstOrNull() ?: Size(640, 480)
 
-        val reader = ImageReader.newInstance(size.width, size.height, ImageFormat.JPEG, 2)
+        val reader = ImageReader.newInstance(size.width, size.height, ImageFormat.JPEG, 3)
         var camera: CameraDevice? = null
         var done = false
-        fun finish(bytes: ByteArray?) {
+        val shots = ArrayList<ByteArray>()
+        fun finish() {
             if (done) return
             done = true
             runCatching { camera?.close() }
             runCatching { reader.close() }
             runCatching { thread.quitSafely() }
-            onResult(bytes)
+            onResult(shots)
         }
 
         var frames = 0
@@ -56,13 +58,14 @@ class IntruderCamera(private val context: Context) {
             runCatching {
                 val img = r.acquireLatestImage() ?: return@setOnImageAvailableListener
                 frames++
-                // Descartamos los primeros cuadros para que el sensor ajuste exposición.
-                if (frames < 4) { img.close(); return@setOnImageAvailableListener }
+                // Descartamos los primeros cuadros (exposición) y después tomamos 1 de cada 2.
+                if (frames < 4 || (frames % 2 == 1)) { img.close(); return@setOnImageAvailableListener }
                 val buf = img.planes[0].buffer
                 val bytes = ByteArray(buf.remaining()); buf.get(bytes)
                 img.close()
-                finish(bytes)
-            }.onFailure { finish(null) }
+                shots.add(bytes)
+                if (shots.size >= count) finish()
+            }.onFailure { if (shots.isNotEmpty()) finish() }
         }, handler)
 
         try {
@@ -78,21 +81,21 @@ class IntruderCamera(private val context: Context) {
                             object : CameraCaptureSession.StateCallback() {
                                 override fun onConfigured(session: CameraCaptureSession) {
                                     runCatching { session.setRepeatingRequest(req.build(), null, handler) }
-                                        .onFailure { finish(null) }
+                                        .onFailure { finish() }
                                 }
-                                override fun onConfigureFailed(session: CameraCaptureSession) = finish(null)
+                                override fun onConfigureFailed(session: CameraCaptureSession) = finish()
                             }, handler)
-                    }.onFailure { finish(null) }
+                    }.onFailure { finish() }
                 }
-                override fun onDisconnected(device: CameraDevice) { runCatching { device.close() }; finish(null) }
-                override fun onError(device: CameraDevice, error: Int) { runCatching { device.close() }; finish(null) }
+                override fun onDisconnected(device: CameraDevice) { runCatching { device.close() }; finish() }
+                override fun onError(device: CameraDevice, error: Int) { runCatching { device.close() }; finish() }
             }, handler)
         } catch (e: Exception) {
-            Log.e(TAG, "openCamera", e); finish(null)
+            Log.e(TAG, "openCamera", e); finish()
         }
 
-        // Red de seguridad: si en 6 s no hubo foto, cerramos todo.
-        handler.postDelayed({ finish(null) }, 6000)
+        // Red de seguridad: cerramos a los 8 s con lo que haya (ráfaga puede tardar un poco más).
+        handler.postDelayed({ finish() }, 8000)
     }
 
     private fun frontCameraId(manager: CameraManager): String? {
