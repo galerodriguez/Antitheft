@@ -25,8 +25,8 @@ android {
         applicationId = "com.sinaptic.centinela"
         minSdk = 26          // Android 8.0 — foreground services modernos
         targetSdk = 34
-        versionCode = 16
-        versionName = "0.9.2"
+        versionCode = 17
+        versionName = "0.9.3"
         // Base del backend; sobrescribir por buildType para prod.
         buildConfigField("String", "API_BASE_URL", "\"https://api.centinela.example.com\"")
     }

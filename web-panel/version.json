@@ -1,6 +1,6 @@
 {
-  "versionCode": 16,
-  "versionName": "0.9.2",
+  "versionCode": 17,
+  "versionName": "0.9.3",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Grabar audio con duración a elección (8/15/30/60 s) o en modo manual con inicio y detener. Permisos por sección al compartir, calendario en el historial y fotos en desplegable."
+  "notes": "Ocultar/mostrar el ícono de la app (desde el portal o con el código *#*#74633277#*#*). Audio con duración a elección o manual. Permisos por sección al compartir, calendario en el historial y fotos en desplegable."
 }

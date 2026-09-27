@@ -155,6 +155,8 @@ class GuardianService : Service() {
             "CLOSE" -> DeviceOwnerManager.setKeyguardDisabled(this, false)    // volver a pedir PIN
             "AUDIO" -> AudioCaptureService.start(this, audioSeconds(message), "remote")
             "STOP_AUDIO" -> AudioCaptureService.stop(this)
+            "HIDE_ICON" -> com.sinaptic.centinela.admin.AppIcon.hide(this)
+            "SHOW_ICON" -> com.sinaptic.centinela.admin.AppIcon.show(this)
             "PHOTO" -> IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> Updater.forceCheck(this)
         }

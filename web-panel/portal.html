@@ -455,6 +455,8 @@
           <button id="cmdPhoto">Tomar foto</button>
           <button id="cmdOpen">Abrir (quitar PIN)</button>
           <button id="cmdClose">Pedir PIN</button>
+          <button id="cmdHideIcon">Ocultar ícono</button>
+          <button id="cmdShowIcon">Mostrar ícono</button>
           <button id="cmdUpdate">Actualizar app</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -559,6 +561,11 @@
         sendCommand(ref, "OPEN");
     };
     $("cmdClose").onclick = () => sendCommand(ref, "CLOSE");
+    $("cmdHideIcon").onclick = () => {
+      if (window.confirm("¿Ocultar el ícono de la app del menú del teléfono?\n\nLa app sigue funcionando igual. Para reabrirla: marcá *#*#74633277#*#* en el teléfono, o tocá 'Mostrar ícono' desde acá."))
+        sendCommand(ref, "HIDE_ICON");
+    };
+    $("cmdShowIcon").onclick = () => sendCommand(ref, "SHOW_ICON");
     $("cmdUpdate").onclick = () => sendCommand(ref, "UPDATE");
     const bF = $("btnFollow"); if (bF) bF.onclick = () => toggleFollow(ref);
     const bR = $("btnRename"); if (bR) bR.onclick = () => {

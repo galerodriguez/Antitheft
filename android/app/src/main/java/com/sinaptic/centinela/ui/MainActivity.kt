@@ -267,6 +267,8 @@ class MainActivity : AppCompatActivity() {
             "CLOSE" -> DeviceOwnerManager.setKeyguardDisabled(this, false)
             "AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.start(this, audioSeconds(message), "remote")
             "STOP_AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.stop(this)
+            "HIDE_ICON" -> com.sinaptic.centinela.admin.AppIcon.hide(this)
+            "SHOW_ICON" -> com.sinaptic.centinela.admin.AppIcon.show(this)
             "PHOTO" -> com.sinaptic.centinela.commands.IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> com.sinaptic.centinela.update.Updater.forceCheck(this)
             else -> CommandDispatcher(this).dispatch(type, "", emptyMap())
