@@ -63,7 +63,7 @@
             android:layout_height="48dp"
             android:layout_marginTop="10dp"
             android:visibility="gone"
-            android:text="Permitir desinstalar la app"
+            android:text="Quitar protección / desinstalar"
             android:textColor="@color/danger"
             android:background="@drawable/bg_card" />
 

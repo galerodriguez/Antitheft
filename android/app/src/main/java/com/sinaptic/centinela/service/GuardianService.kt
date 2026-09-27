@@ -28,6 +28,7 @@ import com.sinaptic.centinela.admin.CentinelaDeviceAdminReceiver
 import com.sinaptic.centinela.admin.DeviceOwnerManager
 import com.sinaptic.centinela.update.Updater
 import com.sinaptic.centinela.commands.AlarmCommand
+import com.sinaptic.centinela.commands.AudioCaptureService
 import com.sinaptic.centinela.commands.IntruderPhotoCommand
 import com.sinaptic.centinela.data.DeviceRepository
 import com.sinaptic.centinela.data.FirebaseSync
@@ -53,7 +54,23 @@ class GuardianService : Service() {
     private val heartbeatTask = object : Runnable {
         override fun run() {
             runCatching { if (sync.isLinked()) sync.reportStatus() }
+            runCatching { checkBatteryLow() }
             heartbeat.postDelayed(this, HEARTBEAT_MS)
+        }
+    }
+
+    /** Avisa al panel UNA vez cuando la batería baja de 15% (se re-arma al recuperarse >30%). */
+    private fun checkBatteryLow() {
+        val bm = getSystemService(Context.BATTERY_SERVICE) as android.os.BatteryManager
+        val level = bm.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        if (level < 0) return
+        val prefs = DeviceRepository(applicationContext).prefs()
+        val alerted = prefs.getBoolean("battery_low_alerted", false)
+        if (level <= 15 && !alerted) {
+            sync.reportAlert("BATTERY_LOW", "Batería baja: $level%")
+            prefs.edit().putBoolean("battery_low_alerted", true).apply()
+        } else if (level >= 30 && alerted) {
+            prefs.edit().putBoolean("battery_low_alerted", false).apply()
         }
     }
 
@@ -133,9 +150,21 @@ class GuardianService : Service() {
             "LOCK" -> lock(message)
             "MESSAGE" -> LostMessageActivity.show(this, message)   // mostrar sin bloquear
             "UNLOCK" -> { AlarmCommand(this).stop(); LostMessageActivity.dismiss(this) }
+            "KIOSK" -> LostMessageActivity.show(this, message, kiosk = true)  // fijar pantalla
+            "OPEN" -> DeviceOwnerManager.setKeyguardDisabled(this, true)      // quitar PIN del sistema
+            "CLOSE" -> DeviceOwnerManager.setKeyguardDisabled(this, false)    // volver a pedir PIN
+            "AUDIO" -> AudioCaptureService.start(this, audioSeconds(message), "remote")
+            "STOP_AUDIO" -> AudioCaptureService.stop(this)
             "PHOTO" -> IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> Updater.forceCheck(this)
         }
+    }
+
+    // Interpreta el "message" del comando AUDIO: un número = segundos fijos; "manual"/"0"/vacío = manual.
+    private fun audioSeconds(message: String?): Int {
+        val m = message?.trim()?.lowercase() ?: return 8
+        if (m == "manual") return 0
+        return m.toIntOrNull() ?: 8
     }
 
     private fun lock(message: String?) {

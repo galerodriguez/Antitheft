@@ -237,8 +237,23 @@
   let map = null, lastMarker = null, trackLine = null, histMarkers = [];
   let selData = null, devSnapData = [];
   let followTimer = null, lastPts = [];
-  let myUid = null, myEmail = null, selRole = "admin", selOwner = null;
+  let myUid = null, myEmail = null, selRole = "admin", selOwner = null, selSections = null;
   let ownerDevices = {}, deviceUnsubs = [], membersUnsub = null;
+  let allHistPts = [];
+
+  // --- Permisos por sección (para acceso compartido) ---
+  function fullSections() { return { status: true, location: true, alerts: true, audio: true, photos: true }; }
+  // Normaliza el valor guardado en shared/{email}.owners[uid]: puede ser un texto ("viewer"/"admin")
+  // de invitaciones viejas, o un objeto { role, sections } de las nuevas.
+  function normPerm(v) {
+    if (v && typeof v === "object") return { role: v.role || "viewer", sections: v.sections || null };
+    return { role: v || "viewer", sections: null };
+  }
+  // Secciones efectivas: "control total" ve todo; "ver" sin secciones (invitación vieja) también ve todo.
+  function effSections(role, sections) {
+    if (role !== "viewer") return fullSections();
+    return sections || fullSections();
+  }
 
   // Refresca los indicadores "en línea" aunque no lleguen datos nuevos (para pasar a rojo solo).
   setInterval(() => {
@@ -294,21 +309,21 @@
   async function loadAllDevices() {
     deviceUnsubs.forEach(u => u && u()); deviceUnsubs = [];
     ownerDevices = {};
-    subscribeOwner(myUid, "admin", true);
+    subscribeOwner(myUid, "admin", true, null);
     // Cuentas que me compartieron acceso:
     try {
       const snap = await db.collection("shared").doc(myEmail).get();
       const owners = (snap.exists && snap.data().owners) || {};
       Object.keys(owners).forEach((ownerUid) => {
-        if (ownerUid !== myUid) subscribeOwner(ownerUid, owners[ownerUid], false);
+        if (ownerUid !== myUid) { const p = normPerm(owners[ownerUid]); subscribeOwner(ownerUid, p.role, false, p.sections); }
       });
     } catch (e) { /* sin comparticiones */ }
   }
 
-  function subscribeOwner(ownerUid, role, isOwn) {
+  function subscribeOwner(ownerUid, role, isOwn, sections) {
     const col = db.collection("users").doc(ownerUid).collection("devices");
     const unsub = col.onSnapshot((snap) => {
-      ownerDevices[ownerUid] = { role, isOwn, docs: snap.docs.map(d => ({ id: d.id, data: d.data() })) };
+      ownerDevices[ownerUid] = { role, isOwn, sections: sections || null, docs: snap.docs.map(d => ({ id: d.id, data: d.data() })) };
       renderDeviceList();
     }, () => {});
     deviceUnsubs.push(unsub);
@@ -319,7 +334,7 @@
     const owners = Object.keys(ownerDevices);
     const flat = [];
     owners.forEach(uid => ownerDevices[uid].docs.forEach(dc =>
-      flat.push({ ownerUid: uid, role: ownerDevices[uid].role, isOwn: ownerDevices[uid].isOwn, id: dc.id, data: dc.data })));
+      flat.push({ ownerUid: uid, role: ownerDevices[uid].role, isOwn: ownerDevices[uid].isOwn, sections: ownerDevices[uid].sections, id: dc.id, data: dc.data })));
     if (!flat.length) {
       list.innerHTML = '<div class="empty" style="padding:20px 8px">Todavía no hay dispositivos.<br>Vinculá la app con esta misma cuenta.</div>';
       return;
@@ -333,19 +348,21 @@
       nm.textContent = it.data.name || "Dispositivo";
       if (!it.isOwn) { const t = document.createElement("span"); t.className = "chip"; t.style.cssText = "margin-left:6px;font-size:10px;padding:1px 6px"; t.textContent = it.role === "viewer" ? "compartido · ver" : "compartido"; nm.appendChild(t); }
       deviceMeta(el.querySelector(".meta"), it.data);
-      el.onclick = () => selectDevice(it.ownerUid, it.id, it.role);
+      el.onclick = () => selectDevice(it.ownerUid, it.id, it.role, it.sections);
       list.appendChild(el);
     });
     devSnapData = flat.map(f => f.data);
-    if (!selectedId) { const f = flat[0]; selectDevice(f.ownerUid, f.id, f.role); }
+    if (!selectedId) { const f = flat[0]; selectDevice(f.ownerUid, f.id, f.role, f.sections); }
     else {
       // refrescar dot "en línea" del seleccionado
       document.querySelectorAll("#deviceList .device").forEach((el, i) => { if (flat[i]) deviceMeta(el.querySelector(".meta"), flat[i].data); });
     }
   }
 
-  function selectDevice(uid, id, role) {
+  function selectDevice(uid, id, role, sections) {
     selectedId = id; selOwner = uid; selRole = role || "admin";
+    selSections = effSections(selRole, sections);
+    allHistPts = [];
     document.querySelectorAll(".device").forEach(e => e.classList.remove("active"));
     if (deviceUnsub) deviceUnsub();
     if (locUnsub) locUnsub();
@@ -354,7 +371,7 @@
     map = lastMarker = trackLine = null; histMarkers = [];
 
     const ref = db.collection("users").doc(uid).collection("devices").doc(id);
-    buildDetailSkeleton(ref, selRole, uid === myUid);
+    buildDetailSkeleton(ref, selRole, uid === myUid, selSections);
 
     deviceUnsub = ref.onSnapshot((doc) => {
       if (!doc.exists) return;
@@ -363,24 +380,33 @@
       list.querySelectorAll(".device").forEach(e => e.classList.remove("active"));
     });
 
-    locUnsub = ref.collection("locations").orderBy("ts", "desc").limit(50)
-      .onSnapshot((snap) => {
-        const pts = [];
-        snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
-        renderHistory(pts);
-      }, () => {});
+    // Ubicación: solo si esta persona tiene permiso para verla.
+    if (selSections.location) {
+      locUnsub = ref.collection("locations").orderBy("ts", "desc").limit(500)
+        .onSnapshot((snap) => {
+          const pts = [];
+          snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
+          renderHistory(pts);
+        }, () => {});
+    }
 
-    alertsUnsub = ref.collection("alerts").orderBy("ts", "desc").limit(40)
-      .onSnapshot((snap) => {
-        const all = [];
-        snap.forEach(d => all.push(Object.assign({ _id: d.id }, d.data())));
-        renderAlerts(all.filter(a => a.type !== "INTRUDER_PHOTO"), ref);
-        renderPhotos(all.filter(a => a.type === "INTRUDER_PHOTO"), ref);
-      }, () => {});
+    // Alertas / audios / fotos: filtrados según los permisos de la persona.
+    if (selSections.alerts || selSections.audio || selSections.photos) {
+      alertsUnsub = ref.collection("alerts").orderBy("ts", "desc").limit(40)
+        .onSnapshot((snap) => {
+          const all = [];
+          snap.forEach(d => all.push(Object.assign({ _id: d.id }, d.data())));
+          const nonPhoto = all.filter(a => a.type !== "INTRUDER_PHOTO").filter(a =>
+            a.type === "AUDIO" ? selSections.audio : selSections.alerts);
+          renderAlerts(nonPhoto, ref);
+          renderPhotos(selSections.photos ? all.filter(a => a.type === "INTRUDER_PHOTO") : [], ref);
+        }, () => {});
+    }
   }
 
-  function buildDetailSkeleton(ref, role, isOwn) {
+  function buildDetailSkeleton(ref, role, isOwn, sections) {
     const admin = (role !== "viewer"); // "viewer" = solo lectura
+    const sec = sections || fullSections(); // qué secciones puede ver esta persona
     $("detailWrap").innerHTML = `
       <div class="panel">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -390,17 +416,21 @@
         </div>
         <div class="sub" id="dModel"></div>
         ${!admin ? '<div class="chip" style="margin-top:8px">👁️ Solo lectura</div>' : ''}
-        <div id="dStatus" class="statusrow"></div>
+        ${(admin || sec.status) ? '<div id="dStatus" class="statusrow"></div>' : ''}
 
+        ${(admin || sec.alerts || sec.audio) ? `
         <div id="alertsWrap" hidden>
           <div class="section-label">Alertas</div>
           <div id="alerts"></div>
-        </div>
+        </div>` : ''}
 
+        ${(admin || sec.photos) ? `
         <div id="photosWrap" hidden>
-          <div class="section-label">Fotos de intruso</div>
-          <div id="photos" class="history"></div>
-        </div>
+          <details class="photos-details" open>
+            <summary class="section-label" style="cursor:pointer">Fotos de intruso <span id="photosCount" class="chip" style="margin-left:6px"></span></summary>
+            <div id="photos" class="history" style="margin-top:8px"></div>
+          </details>
+        </div>` : ''}
 
         ${admin ? `
         <div class="section-label">Funciones</div>
@@ -419,25 +449,41 @@
           <button id="cmdAlarm">Alarma</button>
           <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
           <button id="cmdLock">Bloquear</button>
-          <button id="cmdKiosk" class="btn-danger">Modo kiosko</button>
+          <button id="cmdKiosk" class="btn-danger">Bloqueo extremo</button>
           <button id="cmdMessage">Enviar mensaje</button>
           <button id="cmdUnlock">Desbloquear</button>
           <button id="cmdPhoto">Tomar foto</button>
-          <button id="cmdAudio">Grabar audio</button>
           <button id="cmdOpen">Abrir (quitar PIN)</button>
           <button id="cmdClose">Pedir PIN</button>
           <button id="cmdUpdate">Actualizar app</button>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+          <label class="sub" style="margin:0">🎙️ Audio:</label>
+          <select id="audioSecs" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
+            <option value="8">8 segundos</option>
+            <option value="15">15 segundos</option>
+            <option value="30">30 segundos</option>
+            <option value="60">60 segundos</option>
+            <option value="manual">Manual (yo lo detengo)</option>
+          </select>
+          <button id="cmdAudio">Grabar audio</button>
+        </div>
         <input id="lockMsg" placeholder="Mensaje (bloquear / mostrar / decir en la alarma)" style="margin-top:10px" />
         ` : ''}
 
+        ${(admin || sec.location) ? `
         <div class="section-label">Ubicación</div>
         <div class="cmds" style="margin-bottom:10px">
           ${admin ? '<button id="btnFollow">▶ Seguir en vivo</button>' : ''}
           <button id="btnKml">Exportar recorrido (KML)</button>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+          <label class="sub" style="margin:0">📅 Día:</label>
+          <input type="date" id="histDate" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
+          <button id="btnAllDays" class="btn-ghost" style="padding:8px 12px">Ver todos</button>
+        </div>
         <div id="map"></div>
-        <div id="history" class="history"></div>
+        <div id="history" class="history"></div>` : ''}
 
         ${(admin && isOwn) ? `
         <div class="section-label">Compartir acceso</div>
@@ -450,11 +496,24 @@
           </select>
           <button id="btnShare" class="btn-primary">Invitar</button>
         </div>
-        <div class="sub" style="margin-top:6px">La persona entra al portal con ese email y ve este dispositivo.</div>
+        <div id="shareSections" style="margin-top:10px">
+          <div class="sub" style="margin-bottom:6px">Qué puede ver (solo para el rol "Ver"):</div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="status" checked> Estado y batería</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="location" checked> Ubicación</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="alerts" checked> Alertas</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="audio" checked> Audios grabados</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="photos" checked> Fotos de intruso</label>
+          </div>
+        </div>
+        <div class="sub" style="margin-top:6px">La persona entra al portal con ese email y ve solo lo que tildaste.</div>
         ` : ''}
       </div>`;
 
-    $("btnKml").onclick = () => exportKml(); // disponible también en solo-lectura
+    const bKml = $("btnKml"); if (bKml) bKml.onclick = () => exportKml(); // disponible también en solo-lectura
+    const hd = $("histDate"); if (hd) hd.onchange = () => drawHistory();
+    const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; drawHistory(); };
+    const rSel = $("shareRole"); if (rSel) rSel.onchange = () => { const ss = $("shareSections"); if (ss) ss.style.opacity = (rSel.value === "viewer") ? "1" : "0.4"; };
     if (admin && isOwn) { renderMembers(); $("btnShare").onclick = () => inviteMember(); }
     if (!admin) return; // solo lectura: no cableamos comandos ni toggles
 
@@ -471,11 +530,30 @@
     };
     $("cmdUnlock").onclick = () => sendCommand(ref, "UNLOCK");
     $("cmdKiosk").onclick = () => {
-      if (window.confirm("¿Activar modo kiosko? El teléfono queda fijado en la pantalla de bloqueo y no se puede salir (se sale con Desbloquear)."))
+      if (window.confirm("¿Activar bloqueo extremo? El teléfono queda fijado en la pantalla de bloqueo y no se puede salir (se sale con Desbloquear)."))
         sendCommand(ref, "KIOSK", { message: $("lockMsg").value.trim() });
     };
     $("cmdPhoto").onclick = () => sendCommand(ref, "PHOTO");
-    $("cmdAudio").onclick = () => sendCommand(ref, "AUDIO");
+    let audioManualActive = false;
+    $("cmdAudio").onclick = () => {
+      const sel = $("audioSecs").value;
+      if (audioManualActive) {
+        // Estaba grabando en manual → detener y subir.
+        sendCommand(ref, "STOP_AUDIO");
+        audioManualActive = false;
+        $("cmdAudio").textContent = "Grabar audio";
+        $("cmdAudio").classList.remove("btn-danger");
+        return;
+      }
+      if (sel === "manual") {
+        sendCommand(ref, "AUDIO", { message: "manual" });
+        audioManualActive = true;
+        $("cmdAudio").textContent = "⏹ Detener audio";
+        $("cmdAudio").classList.add("btn-danger");
+      } else {
+        sendCommand(ref, "AUDIO", { message: sel });
+      }
+    };
     $("cmdOpen").onclick = () => {
       if (window.confirm("¿Quitar el PIN/patrón del teléfono? Va a quedar abierto sin bloqueo."))
         sendCommand(ref, "OPEN");
@@ -508,8 +586,14 @@
         const row = document.createElement("div");
         row.className = "hist-item";
         row.innerHTML = `<span class="when"></span><span class="chip"></span><button class="alert-x" title="Quitar">✕</button>`;
+        const label = { status: "estado", location: "ubicación", alerts: "alertas", audio: "audios", photos: "fotos" };
+        let roleTxt = m.role === "viewer" ? "Ver" : "Control total";
+        if (m.role === "viewer" && m.sections) {
+          const on = Object.keys(label).filter(k => m.sections[k]).map(k => label[k]);
+          if (on.length && on.length < 5) roleTxt = "Ver: " + on.join(", ");
+        }
         row.querySelector(".when").textContent = m.email || doc.id;
-        row.querySelector(".chip").textContent = m.role === "viewer" ? "Ver" : "Control total";
+        row.querySelector(".chip").textContent = roleTxt;
         row.querySelector(".alert-x").onclick = () => removeMember(doc.id, m.email);
         box.appendChild(row);
       });
@@ -519,14 +603,21 @@
     const email = memberKey($("shareEmail").value);
     const role = $("shareRole").value;
     if (!email || email.indexOf("@") < 0) { window.alert("Escribí un email válido."); return; }
+    // Para "Ver": guardamos qué secciones tildó. Para "Control total": ve todo (sections null).
+    let sections = null;
+    if (role === "viewer") {
+      sections = { status: false, location: false, alerts: false, audio: false, photos: false };
+      document.querySelectorAll(".secChk").forEach(c => { if (c.checked) sections[c.value] = true; });
+      if (!Object.values(sections).some(v => v)) { window.alert("Elegí al menos una sección que pueda ver."); return; }
+    }
     try {
       await db.collection("users").doc(myUid).collection("members").doc(email)
-        .set({ email, role, addedAt: Date.now() });
-      // Índice inverso para que la persona encuentre este acceso al entrar.
+        .set({ email, role, sections, addedAt: Date.now() });
+      // Índice inverso para que la persona encuentre este acceso al entrar (con rol y secciones).
       await db.collection("shared").doc(email)
-        .set({ owners: { [myUid]: role } }, { merge: true });
+        .set({ owners: { [myUid]: { role, sections } } }, { merge: true });
       $("shareEmail").value = "";
-      window.alert("Listo. " + email + " ya puede entrar al portal con ese email y ver este dispositivo.");
+      window.alert("Listo. " + email + " ya puede entrar al portal con ese email y ver lo que elegiste.");
     } catch (e) { window.alert("No se pudo invitar: " + (e.message || e)); }
   }
   async function removeMember(key, email) {
@@ -570,7 +661,8 @@
     if ($("tgTracking")) $("tgTracking").checked = !!s.tracking;
     if ($("tgPhoto")) $("tgPhoto").checked = !!s.photo;
     // Solo dibujamos lastLocation si el historial todavía no puso marcadores (evita pelear con él).
-    if (d.lastLocation && histMarkers.length === 0) {
+    // Y solo si existe el mapa (una persona sin permiso de "Ubicación" no lo tiene).
+    if (d.lastLocation && histMarkers.length === 0 && $("map")) {
       const ll = d.lastLocation;
       showOnMap([{ lat: ll.lat, lng: ll.lng, startTs: ll.ts, endTs: ll.ts, count: 1 }], true);
     }
@@ -737,6 +829,7 @@ ${marks}</Document></kml>`;
     if (!box) return;
     if (!items.length) { wrap.hidden = true; return; }
     wrap.hidden = false;
+    const cnt = $("photosCount"); if (cnt) cnt.textContent = items.length;
     box.innerHTML = "";
     let lastDay = null;
     items.forEach((a) => {
@@ -776,12 +869,35 @@ ${marks}</Document></kml>`;
     });
   }
 
+  // Convierte un timestamp a "YYYY-MM-DD" en hora local (para comparar con el <input type=date>).
+  function toDateInput(ts) {
+    const d = new Date(ts);
+    const p = (n) => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  // Guarda TODOS los puntos cargados y dibuja según el día elegido en el calendario.
   function renderHistory(pts) {
-    lastPts = pts || [];
+    allHistPts = pts || [];
+    // Ajusta los límites del calendario a los días con datos.
+    const hd = $("histDate");
+    if (hd && allHistPts.length) {
+      const days = allHistPts.map(p => p.ts).filter(Boolean);
+      hd.min = toDateInput(Math.min(...days));
+      hd.max = toDateInput(Math.max(...days));
+    }
+    drawHistory();
+  }
+  function drawHistory() {
     const h = $("history");
     if (!h) return;
+    const sel = $("histDate") ? $("histDate").value : "";
+    let pts = allHistPts;
+    if (sel) pts = allHistPts.filter(p => p.ts && toDateInput(p.ts) === sel);
+    lastPts = pts; // el KML exporta lo que se está viendo
     if (!pts.length) {
-      h.innerHTML = '<div class="empty" style="padding:20px">Sin ubicaciones todavía. Usá "Localizar" o activá "Compartir ubicación".</div>';
+      h.innerHTML = sel
+        ? '<div class="empty" style="padding:20px">Sin ubicaciones ese día. Probá otro o tocá "Ver todos".</div>'
+        : '<div class="empty" style="padding:20px">Sin ubicaciones todavía. Usá "Localizar" o activá "Compartir ubicación".</div>';
       showOnMap([], false);
       return;
     }

@@ -183,10 +183,27 @@ class MainActivity : AppCompatActivity() {
             btnAllow.visibility = android.view.View.VISIBLE
             btnAllow.setOnClickListener {
                 AlertDialog.Builder(this)
-                    .setTitle("Permitir desinstalar")
-                    .setMessage("La app está protegida contra desinstalación. Si continuás, " +
-                        "vas a poder desinstalarla desde Ajustes. ¿Seguro?")
-                    .setPositiveButton("Sí, permitir") { _, _ ->
+                    .setTitle("Quitar protección")
+                    .setMessage("¿Qué querés hacer?\n\n" +
+                        "• LIBERAR TODO: saca todas las restricciones (reseteo de fábrica, " +
+                        "modo avión, etc.), permite desinstalar y renuncia al control total. " +
+                        "Usalo para vender o entregar el teléfono. Es irreversible: para volver " +
+                        "a protegerlo hay que resetear de fábrica y reinstalar por QR.\n\n" +
+                        "• SOLO DESINSTALAR: deja las restricciones puestas pero permite quitar " +
+                        "la app (para reinstalarla o mantenimiento).")
+                    .setPositiveButton("Liberar todo") { _, _ ->
+                        AlertDialog.Builder(this)
+                            .setTitle("¿Seguro?")
+                            .setMessage("Vas a quitar TODA la protección de este teléfono. " +
+                                "No se puede deshacer sin resetear de fábrica.")
+                            .setPositiveButton("Sí, liberar") { _, _ ->
+                                DeviceOwnerManager.releaseDevice(this)
+                                toast("Protección quitada. El teléfono quedó libre.")
+                            }
+                            .setNegativeButton("Cancelar", null)
+                            .show()
+                    }
+                    .setNeutralButton("Solo desinstalar") { _, _ ->
                         DeviceOwnerManager.allowUninstall(this)
                         toast("Desinstalación habilitada. Ya podés quitar la app desde Ajustes.")
                     }
@@ -245,11 +262,23 @@ class MainActivity : AppCompatActivity() {
             "LOCK" -> lockWithMessage(message)
             "MESSAGE" -> LostMessageActivity.show(this, message)
             "UNLOCK" -> { com.sinaptic.centinela.commands.AlarmCommand(this).stop(); LostMessageActivity.dismiss(this) }
+            "KIOSK" -> LostMessageActivity.show(this, message, kiosk = true)
+            "OPEN" -> DeviceOwnerManager.setKeyguardDisabled(this, true)
+            "CLOSE" -> DeviceOwnerManager.setKeyguardDisabled(this, false)
+            "AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.start(this, audioSeconds(message), "remote")
+            "STOP_AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.stop(this)
             "PHOTO" -> com.sinaptic.centinela.commands.IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> com.sinaptic.centinela.update.Updater.forceCheck(this)
             else -> CommandDispatcher(this).dispatch(type, "", emptyMap())
         }
         toast("Comando del portal: $type")
+    }
+
+    // "message" del comando AUDIO: número = segundos fijos; "manual"/"0"/vacío = manual.
+    private fun audioSeconds(message: String?): Int {
+        val m = message?.trim()?.lowercase() ?: return 8
+        if (m == "manual") return 0
+        return m.toIntOrNull() ?: 8
     }
 
     /** Bloquea la pantalla y muestra una pantalla de "teléfono protegido" con el mensaje. */

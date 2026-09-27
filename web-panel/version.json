@@ -1,6 +1,6 @@
 {
-  "versionCode": 13,
-  "versionName": "0.8.0",
+  "versionCode": 16,
+  "versionName": "0.9.2",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Ráfaga de fotos, foto+ubicación al cambiar SIM, alarma hablada, enviar mensaje sin bloquear y desbloqueo remoto."
+  "notes": "Grabar audio con duración a elección (8/15/30/60 s) o en modo manual con inicio y detener. Permisos por sección al compartir, calendario en el historial y fotos en desplegable."
 }
