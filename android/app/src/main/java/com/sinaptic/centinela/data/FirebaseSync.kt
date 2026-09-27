@@ -154,6 +154,17 @@ class FirebaseSync(private val context: Context) {
             SetOptions.merge())
     }
 
+    /** Sube un audio de ambiente como base64 (entra en Firestore). */
+    fun uploadAudio(base64: String, requestId: String) {
+        val doc = deviceDoc() ?: return
+        val ts = System.currentTimeMillis()
+        doc.collection("alerts").add(mapOf(
+            "type" to "AUDIO", "detail" to "Audio de ambiente",
+            "ts" to ts, "audio" to base64, "requestId" to requestId))
+        doc.set(mapOf("lastAlert" to mapOf(
+            "type" to "AUDIO", "detail" to "Audio de ambiente", "ts" to ts)), SetOptions.merge())
+    }
+
     fun listen(
         onSettings: (tracking: Boolean, photo: Boolean) -> Unit,
         onCommand: (type: String, message: String?) -> Unit,

@@ -29,6 +29,12 @@ class LostMessageActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.lostMsg).text =
             intent.getStringExtra(EXTRA_MESSAGE) ?: getString(R.string.lost_default)
         current = this
+        if (intent.getBooleanExtra(EXTRA_KIOSK, false)) enterKiosk()
+    }
+
+    /** Modo kiosko: fija la app (no se puede salir) si somos Device Owner. */
+    private fun enterKiosk() {
+        runCatching { startLockTask() }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -48,14 +54,16 @@ class LostMessageActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_MESSAGE = "message"
+        const val EXTRA_KIOSK = "kiosk"
         private const val CHANNEL = "centinela_lost"
         private const val NOTIF_ID = 2001
 
         // Referencia a la pantalla actual, para poder cerrarla desde el comando UNLOCK.
         @Volatile private var current: LostMessageActivity? = null
 
-        /** Cierra la pantalla de bloqueo/mensaje y quita la notificación (comando UNLOCK). */
+        /** Cierra la pantalla de bloqueo/mensaje, sale del kiosko y quita la notificación (UNLOCK). */
         fun dismiss(context: Context) {
+            runCatching { current?.stopLockTask() }
             runCatching { current?.finish() }
             current = null
             runCatching {
@@ -70,12 +78,13 @@ class LostMessageActivity : AppCompatActivity() {
          * Activity directamente; la vía autorizada es una notificación con "full-screen intent",
          * que el sistema convierte en la pantalla a pantalla completa sobre el bloqueo.
          */
-        fun show(context: Context, message: String?) {
+        fun show(context: Context, message: String?, kiosk: Boolean = false) {
             val msg = if (message.isNullOrBlank())
                 context.getString(R.string.lost_default) else message
 
             val activityIntent = Intent(context, LostMessageActivity::class.java)
                 .putExtra(EXTRA_MESSAGE, msg)
+                .putExtra(EXTRA_KIOSK, kiosk)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
 
             val piFlags = PendingIntent.FLAG_UPDATE_CURRENT or
