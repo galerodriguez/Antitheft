@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Email del usuario logueado, en minúsculas (así lo guarda el portal).
+    function myEmail() {
+      return request.auth != null && request.auth.token.email != null
+        ? request.auth.token.email.lower() : "";
+    }
+    // ¿El usuario logueado es miembro invitado de la cuenta ownerUid?
+    function isMember(ownerUid) {
+      return exists(/databases/$(database)/documents/users/$(ownerUid)/members/$(myEmail()));
+    }
+    // Rol del miembro invitado ("viewer" | "admin").
+    function memberRole(ownerUid) {
+      return get(/databases/$(database)/documents/users/$(ownerUid)/members/$(myEmail())).data.role;
+    }
+
+    match /users/{uid} {
+      // El dueño de la cuenta tiene acceso total a lo suyo.
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      // Lista de miembros invitados: solo el dueño la administra.
+      match /members/{email} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // Dispositivos y todo lo que cuelga de ellos (ubicaciones, alertas, comandos).
+      match /devices/{deviceId}/{sub=**} {
+        allow read: if request.auth != null &&
+          (request.auth.uid == uid || isMember(uid));
+        // Escribir (mandar comandos, cambiar ajustes) solo el dueño o un miembro "admin".
+        allow write: if request.auth != null &&
+          (request.auth.uid == uid || (isMember(uid) && memberRole(uid) == 'admin'));
+      }
+      match /devices/{deviceId} {
+        allow read: if request.auth != null &&
+          (request.auth.uid == uid || isMember(uid));
+        allow write: if request.auth != null &&
+          (request.auth.uid == uid || (isMember(uid) && memberRole(uid) == 'admin'));
+      }
+    }
+
+    // Índice inverso: cada persona encuentra las cuentas que le compartieron.
+    // Es solo un índice; el acceso real lo decide el doc "members" del dueño.
+    match /shared/{email} {
+      allow read: if request.auth != null && myEmail() == email;
+      allow write: if request.auth != null; // el dueño escribe el índice al invitar
+    }
+  }
+}

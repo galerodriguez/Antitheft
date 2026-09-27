@@ -237,6 +237,8 @@
   let map = null, lastMarker = null, trackLine = null, histMarkers = [];
   let selData = null, devSnapData = [];
   let followTimer = null, lastPts = [];
+  let myUid = null, myEmail = null, selRole = "admin", selOwner = null;
+  let ownerDevices = {}, deviceUnsubs = [], membersUnsub = null;
 
   // Refresca los indicadores "en línea" aunque no lleguen datos nuevos (para pasar a rojo solo).
   setInterval(() => {
@@ -274,46 +276,76 @@
 
   auth.onAuthStateChanged((user) => {
     if (user) {
+      myUid = user.uid; myEmail = (user.email || "").toLowerCase();
       $("loginView").hidden = true; $("appView").hidden = false;
       $("who").hidden = false; $("who").textContent = user.email; $("btnLogout").hidden = false;
-      watchDevices(user.uid);
+      loadAllDevices();
     } else {
       $("appView").hidden = true; $("loginView").hidden = false;
       $("who").hidden = true; $("btnLogout").hidden = true;
       stopFollow();
-      [devicesUnsub, deviceUnsub, locUnsub, alertsUnsub].forEach(u => u && u());
-      selectedId = null; $("email").value = ""; $("pass").value = ""; setMsg("", "");
+      deviceUnsubs.forEach(u => u && u()); deviceUnsubs = []; ownerDevices = {};
+      [deviceUnsub, locUnsub, alertsUnsub].forEach(u => u && u());
+      selectedId = null; myUid = myEmail = null; $("email").value = ""; $("pass").value = ""; setMsg("", "");
     }
   });
 
-  // ---- Dispositivos ----
-  function watchDevices(uid) {
-    if (devicesUnsub) devicesUnsub();
-    const col = db.collection("users").doc(uid).collection("devices");
-    devicesUnsub = col.onSnapshot((snap) => {
-      const list = $("deviceList");
-      if (snap.empty) {
-        list.innerHTML = '<div class="empty" style="padding:20px 8px">Todavía no hay dispositivos.<br>Vinculá la app con esta misma cuenta.</div>';
-        return;
-      }
-      list.innerHTML = "";
-      snap.forEach((doc) => {
-        const d = doc.data();
-        const el = document.createElement("button");
-        el.className = "device" + (doc.id === selectedId ? " active" : "");
-        el.innerHTML = '<div class="name"></div><div class="meta"></div>';
-        el.querySelector(".name").textContent = d.name || "Dispositivo";
-        deviceMeta(el.querySelector(".meta"), d);
-        el.onclick = () => selectDevice(uid, doc.id);
-        list.appendChild(el);
+  // ---- Dispositivos (propios + compartidos con roles) ----
+  async function loadAllDevices() {
+    deviceUnsubs.forEach(u => u && u()); deviceUnsubs = [];
+    ownerDevices = {};
+    subscribeOwner(myUid, "admin", true);
+    // Cuentas que me compartieron acceso:
+    try {
+      const snap = await db.collection("shared").doc(myEmail).get();
+      const owners = (snap.exists && snap.data().owners) || {};
+      Object.keys(owners).forEach((ownerUid) => {
+        if (ownerUid !== myUid) subscribeOwner(ownerUid, owners[ownerUid], false);
       });
-      devSnapData = snap.docs.map(dc => dc.data());
-      if (!selectedId) selectDevice(uid, snap.docs[0].id);
-    }, () => { $("deviceList").innerHTML = '<div class="empty">No se pudo leer. Revisá las reglas de Firestore.</div>'; });
+    } catch (e) { /* sin comparticiones */ }
   }
 
-  function selectDevice(uid, id) {
-    selectedId = id;
+  function subscribeOwner(ownerUid, role, isOwn) {
+    const col = db.collection("users").doc(ownerUid).collection("devices");
+    const unsub = col.onSnapshot((snap) => {
+      ownerDevices[ownerUid] = { role, isOwn, docs: snap.docs.map(d => ({ id: d.id, data: d.data() })) };
+      renderDeviceList();
+    }, () => {});
+    deviceUnsubs.push(unsub);
+  }
+
+  function renderDeviceList() {
+    const list = $("deviceList");
+    const owners = Object.keys(ownerDevices);
+    const flat = [];
+    owners.forEach(uid => ownerDevices[uid].docs.forEach(dc =>
+      flat.push({ ownerUid: uid, role: ownerDevices[uid].role, isOwn: ownerDevices[uid].isOwn, id: dc.id, data: dc.data })));
+    if (!flat.length) {
+      list.innerHTML = '<div class="empty" style="padding:20px 8px">Todavía no hay dispositivos.<br>Vinculá la app con esta misma cuenta.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    flat.forEach((it) => {
+      const el = document.createElement("button");
+      el.className = "device" + (it.id === selectedId ? " active" : "");
+      el.innerHTML = '<div class="name"></div><div class="meta"></div>';
+      const nm = el.querySelector(".name");
+      nm.textContent = it.data.name || "Dispositivo";
+      if (!it.isOwn) { const t = document.createElement("span"); t.className = "chip"; t.style.cssText = "margin-left:6px;font-size:10px;padding:1px 6px"; t.textContent = it.role === "viewer" ? "compartido · ver" : "compartido"; nm.appendChild(t); }
+      deviceMeta(el.querySelector(".meta"), it.data);
+      el.onclick = () => selectDevice(it.ownerUid, it.id, it.role);
+      list.appendChild(el);
+    });
+    devSnapData = flat.map(f => f.data);
+    if (!selectedId) { const f = flat[0]; selectDevice(f.ownerUid, f.id, f.role); }
+    else {
+      // refrescar dot "en línea" del seleccionado
+      document.querySelectorAll("#deviceList .device").forEach((el, i) => { if (flat[i]) deviceMeta(el.querySelector(".meta"), flat[i].data); });
+    }
+  }
+
+  function selectDevice(uid, id, role) {
+    selectedId = id; selOwner = uid; selRole = role || "admin";
     document.querySelectorAll(".device").forEach(e => e.classList.remove("active"));
     if (deviceUnsub) deviceUnsub();
     if (locUnsub) locUnsub();
@@ -322,7 +354,7 @@
     map = lastMarker = trackLine = null; histMarkers = [];
 
     const ref = db.collection("users").doc(uid).collection("devices").doc(id);
-    buildDetailSkeleton(ref);
+    buildDetailSkeleton(ref, selRole, uid === myUid);
 
     deviceUnsub = ref.onSnapshot((doc) => {
       if (!doc.exists) return;
@@ -347,15 +379,17 @@
       }, () => {});
   }
 
-  function buildDetailSkeleton(ref) {
+  function buildDetailSkeleton(ref, role, isOwn) {
+    const admin = (role !== "viewer"); // "viewer" = solo lectura
     $("detailWrap").innerHTML = `
       <div class="panel">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <h2 id="dName" style="flex:1;min-width:120px">Dispositivo</h2>
-          <button id="btnRename" class="btn-ghost" style="padding:6px 10px">Renombrar</button>
-          <button id="btnDelete" class="btn-danger" style="padding:6px 10px">Eliminar</button>
+          ${admin ? '<button id="btnRename" class="btn-ghost" style="padding:6px 10px">Renombrar</button>' : ''}
+          ${(admin && isOwn) ? '<button id="btnDelete" class="btn-danger" style="padding:6px 10px">Eliminar</button>' : ''}
         </div>
         <div class="sub" id="dModel"></div>
+        ${!admin ? '<div class="chip" style="margin-top:8px">👁️ Solo lectura</div>' : ''}
         <div id="dStatus" class="statusrow"></div>
 
         <div id="alertsWrap" hidden>
@@ -368,6 +402,7 @@
           <div id="photos" class="history"></div>
         </div>
 
+        ${admin ? `
         <div class="section-label">Funciones</div>
         <div class="toggle-row first">
           <div class="txt"><div class="t">Compartir ubicación (Familiar)</div><div class="d">Rastreo en segundo plano</div></div>
@@ -384,21 +419,44 @@
           <button id="cmdAlarm">Alarma</button>
           <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
           <button id="cmdLock">Bloquear</button>
+          <button id="cmdKiosk" class="btn-danger">Modo kiosko</button>
           <button id="cmdMessage">Enviar mensaje</button>
           <button id="cmdUnlock">Desbloquear</button>
           <button id="cmdPhoto">Tomar foto</button>
+          <button id="cmdAudio">Grabar audio</button>
+          <button id="cmdOpen">Abrir (quitar PIN)</button>
+          <button id="cmdClose">Pedir PIN</button>
           <button id="cmdUpdate">Actualizar app</button>
         </div>
         <input id="lockMsg" placeholder="Mensaje (bloquear / mostrar / decir en la alarma)" style="margin-top:10px" />
+        ` : ''}
 
         <div class="section-label">Ubicación</div>
         <div class="cmds" style="margin-bottom:10px">
-          <button id="btnFollow">▶ Seguir en vivo</button>
+          ${admin ? '<button id="btnFollow">▶ Seguir en vivo</button>' : ''}
           <button id="btnKml">Exportar recorrido (KML)</button>
         </div>
         <div id="map"></div>
         <div id="history" class="history"></div>
+
+        ${(admin && isOwn) ? `
+        <div class="section-label">Compartir acceso</div>
+        <div id="membersList"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <input id="shareEmail" type="email" placeholder="email de la persona" style="flex:1;min-width:160px" />
+          <select id="shareRole" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
+            <option value="viewer">Ver</option>
+            <option value="admin">Control total</option>
+          </select>
+          <button id="btnShare" class="btn-primary">Invitar</button>
+        </div>
+        <div class="sub" style="margin-top:6px">La persona entra al portal con ese email y ve este dispositivo.</div>
+        ` : ''}
       </div>`;
+
+    $("btnKml").onclick = () => exportKml(); // disponible también en solo-lectura
+    if (admin && isOwn) { renderMembers(); $("btnShare").onclick = () => inviteMember(); }
+    if (!admin) return; // solo lectura: no cableamos comandos ni toggles
 
     $("tgTracking").onchange = (e) => ref.set({ settings: { tracking: e.target.checked } }, { merge: true });
     $("tgPhoto").onchange = (e) => ref.set({ settings: { photo: e.target.checked } }, { merge: true });
@@ -412,20 +470,73 @@
       sendCommand(ref, "MESSAGE", { message: m });
     };
     $("cmdUnlock").onclick = () => sendCommand(ref, "UNLOCK");
+    $("cmdKiosk").onclick = () => {
+      if (window.confirm("¿Activar modo kiosko? El teléfono queda fijado en la pantalla de bloqueo y no se puede salir (se sale con Desbloquear)."))
+        sendCommand(ref, "KIOSK", { message: $("lockMsg").value.trim() });
+    };
     $("cmdPhoto").onclick = () => sendCommand(ref, "PHOTO");
+    $("cmdAudio").onclick = () => sendCommand(ref, "AUDIO");
+    $("cmdOpen").onclick = () => {
+      if (window.confirm("¿Quitar el PIN/patrón del teléfono? Va a quedar abierto sin bloqueo."))
+        sendCommand(ref, "OPEN");
+    };
+    $("cmdClose").onclick = () => sendCommand(ref, "CLOSE");
     $("cmdUpdate").onclick = () => sendCommand(ref, "UPDATE");
-    $("btnFollow").onclick = () => toggleFollow(ref);
-    $("btnKml").onclick = () => exportKml();
-    $("btnRename").onclick = () => {
+    const bF = $("btnFollow"); if (bF) bF.onclick = () => toggleFollow(ref);
+    const bR = $("btnRename"); if (bR) bR.onclick = () => {
       const actual = $("dName").textContent;
       const nuevo = window.prompt("Nuevo nombre del dispositivo:", actual);
       if (nuevo && nuevo.trim()) ref.set({ name: nuevo.trim() }, { merge: true });
     };
-    $("btnDelete").onclick = () => {
+    const bD = $("btnDelete"); if (bD) bD.onclick = () => {
       if (window.confirm("¿Eliminar este dispositivo del portal?\n\n(No desinstala la app del teléfono. El teléfono que esté en uso volverá a aparecer al sincronizar; borrá solo los duplicados viejos.)")) {
         deleteDevice(ref);
       }
     };
+  }
+
+  // ---- Compartir acceso (miembros) ----
+  function memberKey(email) { return email.trim().toLowerCase(); }
+  function renderMembers() {
+    const box = $("membersList"); if (!box) return;
+    if (membersUnsub) membersUnsub();
+    membersUnsub = db.collection("users").doc(myUid).collection("members").onSnapshot((snap) => {
+      if (snap.empty) { box.innerHTML = '<div class="sub">Nadie más tiene acceso todavía.</div>'; return; }
+      box.innerHTML = "";
+      snap.forEach((doc) => {
+        const m = doc.data();
+        const row = document.createElement("div");
+        row.className = "hist-item";
+        row.innerHTML = `<span class="when"></span><span class="chip"></span><button class="alert-x" title="Quitar">✕</button>`;
+        row.querySelector(".when").textContent = m.email || doc.id;
+        row.querySelector(".chip").textContent = m.role === "viewer" ? "Ver" : "Control total";
+        row.querySelector(".alert-x").onclick = () => removeMember(doc.id, m.email);
+        box.appendChild(row);
+      });
+    }, () => {});
+  }
+  async function inviteMember() {
+    const email = memberKey($("shareEmail").value);
+    const role = $("shareRole").value;
+    if (!email || email.indexOf("@") < 0) { window.alert("Escribí un email válido."); return; }
+    try {
+      await db.collection("users").doc(myUid).collection("members").doc(email)
+        .set({ email, role, addedAt: Date.now() });
+      // Índice inverso para que la persona encuentre este acceso al entrar.
+      await db.collection("shared").doc(email)
+        .set({ owners: { [myUid]: role } }, { merge: true });
+      $("shareEmail").value = "";
+      window.alert("Listo. " + email + " ya puede entrar al portal con ese email y ver este dispositivo.");
+    } catch (e) { window.alert("No se pudo invitar: " + (e.message || e)); }
+  }
+  async function removeMember(key, email) {
+    if (!window.confirm("¿Quitar el acceso de " + (email || key) + "?")) return;
+    try {
+      await db.collection("users").doc(myUid).collection("members").doc(key).delete();
+      // quitar del índice inverso
+      const upd = {}; upd["owners." + myUid] = firebase.firestore.FieldValue.delete();
+      await db.collection("shared").doc(key).set(upd, { merge: true });
+    } catch (e) { window.alert("No se pudo quitar: " + (e.message || e)); }
   }
 
   async function deleteDevice(ref) {
@@ -547,7 +658,7 @@
     items.forEach((a) => {
       const el = document.createElement("div");
       el.className = "alert-item" + (a.type === "SIM_CHANGED" ? " warn" : "");
-      const ico = a.type === "INTRUDER_PHOTO" ? "📷" : (a.type === "SIM_CHANGED" ? "⚠️" : "🔔");
+      const ico = a.type === "INTRUDER_PHOTO" ? "📷" : (a.type === "SIM_CHANGED" ? "⚠️" : (a.type === "AUDIO" ? "🎙️" : (a.type === "BATTERY_LOW" ? "🔋" : "🔔")));
       el.innerHTML = `<div class="alert-head">
           <span class="alert-ico"></span>
           <span class="alert-txt"></span>
@@ -567,6 +678,11 @@
         img.className = "intruder-img"; img.src = a.photo; img.alt = "Foto de intruso";
         img.onclick = () => openPhoto(a.photo);
         el.appendChild(img);
+      }
+      if (a.type === "AUDIO" && a.audio) {
+        const au = document.createElement("audio");
+        au.controls = true; au.src = a.audio; au.style.cssText = "margin-top:8px;width:100%;max-width:280px;display:block";
+        el.appendChild(au);
       }
       box.appendChild(el);
     });
