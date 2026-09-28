@@ -335,19 +335,44 @@
     const flat = [];
     owners.forEach(uid => ownerDevices[uid].docs.forEach(dc =>
       flat.push({ ownerUid: uid, role: ownerDevices[uid].role, isOwn: ownerDevices[uid].isOwn, sections: ownerDevices[uid].sections, id: dc.id, data: dc.data })));
+    // Orden: primero los propios (por el orden que elegiste, campo "order"), después los compartidos.
+    flat.sort((a, b) => {
+      if (a.isOwn !== b.isOwn) return a.isOwn ? -1 : 1;
+      const oa = (a.data.order != null) ? a.data.order : 9999;
+      const ob = (b.data.order != null) ? b.data.order : 9999;
+      if (oa !== ob) return oa - ob;
+      return (a.data.name || "").localeCompare(b.data.name || "");
+    });
     if (!flat.length) {
       list.innerHTML = '<div class="empty" style="padding:20px 8px">Todavía no hay dispositivos.<br>Vinculá la app con esta misma cuenta.</div>';
       return;
     }
+    const ownCount = flat.filter(f => f.isOwn).length;
     list.innerHTML = "";
-    flat.forEach((it) => {
+    flat.forEach((it, idx) => {
       const el = document.createElement("button");
       el.className = "device" + (it.id === selectedId ? " active" : "");
-      el.innerHTML = '<div class="name"></div><div class="meta"></div>';
+      el.style.cssText = "display:flex;align-items:center;gap:8px";
+      el.innerHTML = '<div style="flex:1;min-width:0"><div class="name"></div><div class="meta"></div></div>';
       const nm = el.querySelector(".name");
       nm.textContent = it.data.name || "Dispositivo";
       if (!it.isOwn) { const t = document.createElement("span"); t.className = "chip"; t.style.cssText = "margin-left:6px;font-size:10px;padding:1px 6px"; t.textContent = it.role === "viewer" ? "compartido · ver" : "compartido"; nm.appendChild(t); }
       deviceMeta(el.querySelector(".meta"), it.data);
+      // Flechas para ordenar (solo dispositivos propios y solo si hay más de uno).
+      if (it.isOwn && ownCount > 1) {
+        const arrows = document.createElement("div");
+        arrows.style.cssText = "display:flex;flex-direction:column;gap:2px";
+        const up = document.createElement("span");
+        up.textContent = "▲"; up.title = "Subir";
+        up.style.cssText = "cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;color:var(--muted)" + (idx === 0 ? ";opacity:.25;pointer-events:none" : "");
+        up.onclick = (e) => { e.stopPropagation(); moveOwnDevice(it.id, -1); };
+        const dn = document.createElement("span");
+        dn.textContent = "▼"; dn.title = "Bajar";
+        dn.style.cssText = "cursor:pointer;font-size:11px;line-height:1;padding:2px 4px;color:var(--muted)" + (idx === ownCount - 1 ? ";opacity:.25;pointer-events:none" : "");
+        dn.onclick = (e) => { e.stopPropagation(); moveOwnDevice(it.id, 1); };
+        arrows.appendChild(up); arrows.appendChild(dn);
+        el.appendChild(arrows);
+      }
       el.onclick = () => selectDevice(it.ownerUid, it.id, it.role, it.sections);
       list.appendChild(el);
     });
@@ -357,6 +382,25 @@
       // refrescar dot "en línea" del seleccionado
       document.querySelectorAll("#deviceList .device").forEach((el, i) => { if (flat[i]) deviceMeta(el.querySelector(".meta"), flat[i].data); });
     }
+  }
+
+  // Reordena los dispositivos propios y guarda el orden (campo "order") en cada uno.
+  function moveOwnDevice(id, dir) {
+    const own = [];
+    Object.keys(ownerDevices).forEach(uid => {
+      if (ownerDevices[uid].isOwn) ownerDevices[uid].docs.forEach(dc => own.push({ id: dc.id, order: dc.data.order, name: dc.data.name }));
+    });
+    own.sort((a, b) => {
+      const oa = (a.order != null) ? a.order : 9999, ob = (b.order != null) ? b.order : 9999;
+      if (oa !== ob) return oa - ob;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+    const i = own.findIndex(d => d.id === id), j = i + dir;
+    if (i < 0 || j < 0 || j >= own.length) return;
+    const tmp = own[i]; own[i] = own[j]; own[j] = tmp;
+    const batch = db.batch();
+    own.forEach((d, idx) => batch.set(db.collection("users").doc(myUid).collection("devices").doc(d.id), { order: idx }, { merge: true }));
+    batch.commit().catch(e => window.alert("No se pudo reordenar: " + (e.message || e)));
   }
 
   function selectDevice(uid, id, role, sections) {
@@ -429,7 +473,7 @@
 
         ${(admin || sec.audio) ? `
         <div id="audiosWrap" hidden>
-          <details class="photos-details" open>
+          <details class="photos-details">
             <summary class="section-label" style="cursor:pointer">Audios grabados <span id="audiosCount" class="chip" style="margin-left:6px"></span></summary>
             <div id="audios" class="history" style="margin-top:8px"></div>
           </details>
@@ -437,7 +481,7 @@
 
         ${(admin || sec.photos) ? `
         <div id="photosWrap" hidden>
-          <details class="photos-details" open>
+          <details class="photos-details">
             <summary class="section-label" style="cursor:pointer">Fotos de intruso <span id="photosCount" class="chip" style="margin-left:6px"></span></summary>
             <div id="photos" class="history" style="margin-top:8px"></div>
           </details>
