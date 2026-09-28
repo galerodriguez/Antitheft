@@ -396,10 +396,13 @@
         .onSnapshot((snap) => {
           const all = [];
           snap.forEach(d => all.push(Object.assign({ _id: d.id }, d.data())));
-          const nonPhoto = all.filter(a => a.type !== "INTRUDER_PHOTO").filter(a =>
-            a.type === "AUDIO" ? selSections.audio : selSections.alerts);
-          renderAlerts(nonPhoto, ref);
-          renderPhotos(selSections.photos ? all.filter(a => a.type === "INTRUDER_PHOTO") : [], ref);
+          const alerts = selSections.alerts
+            ? all.filter(a => a.type !== "INTRUDER_PHOTO" && a.type !== "AUDIO") : [];
+          const audios = selSections.audio ? all.filter(a => a.type === "AUDIO") : [];
+          const photos = selSections.photos ? all.filter(a => a.type === "INTRUDER_PHOTO") : [];
+          renderAlerts(alerts, ref);
+          renderAudios(audios, ref);
+          renderPhotos(photos, ref);
         }, () => {});
     }
   }
@@ -418,10 +421,18 @@
         ${!admin ? '<div class="chip" style="margin-top:8px">👁️ Solo lectura</div>' : ''}
         ${(admin || sec.status) ? '<div id="dStatus" class="statusrow"></div>' : ''}
 
-        ${(admin || sec.alerts || sec.audio) ? `
+        ${(admin || sec.alerts) ? `
         <div id="alertsWrap" hidden>
           <div class="section-label">Alertas</div>
           <div id="alerts"></div>
+        </div>` : ''}
+
+        ${(admin || sec.audio) ? `
+        <div id="audiosWrap" hidden>
+          <details class="photos-details" open>
+            <summary class="section-label" style="cursor:pointer">Audios grabados <span id="audiosCount" class="chip" style="margin-left:6px"></span></summary>
+            <div id="audios" class="history" style="margin-top:8px"></div>
+          </details>
         </div>` : ''}
 
         ${(admin || sec.photos) ? `
@@ -829,6 +840,56 @@ ${marks}</Document></kml>`;
     a.href = src;
     a.download = "intruso_" + new Date(ts || Date.now()).toISOString().replace(/[:.]/g, "-") + ".jpg";
     document.body.appendChild(a); a.click(); a.remove();
+  }
+  function downloadAudio(src, ts) {
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = "audio_" + new Date(ts || Date.now()).toISOString().replace(/[:.]/g, "-") + ".m4a";
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  // Panel dedicado de audios grabados: desplegable, lista por día, con reproductor, descargar y eliminar.
+  function renderAudios(items, ref) {
+    const wrap = $("audiosWrap"), box = $("audios");
+    if (!box) return;
+    if (!items.length) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    const cnt = $("audiosCount"); if (cnt) cnt.textContent = items.length;
+    box.innerHTML = "";
+    let lastDay = null;
+    items.forEach((a) => {
+      const dl = dayLabel(a.ts);
+      if (dl !== lastDay) {
+        lastDay = dl;
+        const hd = document.createElement("div");
+        hd.className = "hist-day"; hd.textContent = dl;
+        box.appendChild(hd);
+      }
+      const row = document.createElement("div");
+      row.className = "hist-item";
+      row.style.cssText = "flex-direction:column;align-items:stretch;gap:8px";
+      const time = document.createElement("div");
+      time.className = "when";
+      time.textContent = a.ts ? new Date(a.ts).toLocaleString() : "—";
+      row.appendChild(time);
+      if (a.audio) {
+        const au = document.createElement("audio");
+        au.controls = true; au.src = a.audio; au.style.cssText = "width:100%;max-width:320px";
+        row.appendChild(au);
+      }
+      const acts = document.createElement("div");
+      acts.className = "photo-acts";
+      const bDl = document.createElement("button");
+      bDl.textContent = "Descargar"; bDl.onclick = () => downloadAudio(a.audio, a.ts);
+      const bDel = document.createElement("button");
+      bDel.className = "btn-danger"; bDel.textContent = "Eliminar";
+      bDel.onclick = () => {
+        if (ref && a._id && window.confirm("¿Eliminar este audio? No se puede deshacer."))
+          ref.collection("alerts").doc(a._id).delete().catch(() => {});
+      };
+      acts.appendChild(bDl); acts.appendChild(bDel);
+      row.appendChild(acts);
+      box.appendChild(row);
+    });
   }
   // Panel dedicado de fotos de intruso: lista por día, con vista previa, descargar y eliminar.
   function renderPhotos(items, ref) {
