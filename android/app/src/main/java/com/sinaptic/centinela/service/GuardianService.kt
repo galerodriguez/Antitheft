@@ -55,6 +55,12 @@ class GuardianService : Service() {
         override fun run() {
             runCatching { if (sync.isLinked()) sync.reportStatus() }
             runCatching { checkBatteryLow() }
+            // Si hay root (Samsung con Knox, sin Device Owner) y apagaron la ubicación, la reactiva
+            // — salvo que el dueño la haya apagado a propósito desde el portal.
+            runCatching {
+                if (DeviceRepository(applicationContext).isAutoLocation())
+                    com.sinaptic.centinela.root.RootControl.ensureLocationOn(this@GuardianService)
+            }
             heartbeat.postDelayed(this, HEARTBEAT_MS)
         }
     }
@@ -138,13 +144,21 @@ class GuardianService : Service() {
         // Cualquier comando del portal es señal de vida: refrescamos batería/conexión al toque.
         runCatching { sync.reportStatus() }
         when (type.uppercase()) {
-            "LOCATE" -> fused.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
+            "LOCATE" -> {
+                // Si la ubicación está apagada y hay root, la prende antes de localizar
+                // (salvo que el dueño la haya apagado a propósito).
+                runCatching {
+                    if (DeviceRepository(applicationContext).isAutoLocation())
+                        com.sinaptic.centinela.root.RootControl.ensureLocationOn(this)
+                }
+                fused.getCurrentLocation(Priority.PRIORITY_BALANCED_POWER_ACCURACY, null)
                 .addOnSuccessListener { loc ->
                     if (loc != null) sync.uploadLocation(loc.latitude, loc.longitude)
                     else fused.lastLocation.addOnSuccessListener { l ->
                         if (l != null) sync.uploadLocation(l.latitude, l.longitude)
                     }
                 }
+            }
             "ALARM" -> AlarmCommand(this).start(60, message)
             "STOP_ALARM" -> AlarmCommand(this).stop()
             "LOCK" -> lock(message)
@@ -157,6 +171,16 @@ class GuardianService : Service() {
             "STOP_AUDIO" -> AudioCaptureService.stop(this)
             "HIDE_ICON" -> com.sinaptic.centinela.admin.AppIcon.hide(this)
             "SHOW_ICON" -> com.sinaptic.centinela.admin.AppIcon.show(this)
+            "LOCATION_ON" -> {
+                DeviceRepository(applicationContext).setAutoLocation(true)
+                DeviceOwnerManager.setLocation(this, true)
+                com.sinaptic.centinela.root.RootControl.ensureLocationOn(this)
+            }
+            "LOCATION_OFF" -> {
+                DeviceRepository(applicationContext).setAutoLocation(false)
+                DeviceOwnerManager.setLocation(this, false)
+                com.sinaptic.centinela.root.RootControl.turnLocationOff(this)
+            }
             "PHOTO" -> IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> Updater.forceCheck(this)
         }

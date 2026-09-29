@@ -95,6 +95,7 @@ class FirebaseSync(private val context: Context) {
         val doc = deviceDoc() ?: return
         doc.set(mapOf("status" to mapOf(
             "battery" to batteryLevel(),
+            "charging" to isCharging(),
             "network" to networkType(),
             "ts" to System.currentTimeMillis(),
         )), SetOptions.merge())
@@ -105,6 +106,14 @@ class FirebaseSync(private val context: Context) {
             val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
         } catch (e: Exception) { -1 }
+    }
+
+    /** ¿El teléfono está cargando (enchufado o por USB/inalámbrico)? */
+    private fun isCharging(): Boolean {
+        return try {
+            val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
+            bm.isCharging
+        } catch (e: Exception) { false }
     }
 
     private fun networkType(): String {

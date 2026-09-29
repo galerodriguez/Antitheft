@@ -269,6 +269,16 @@ class MainActivity : AppCompatActivity() {
             "STOP_AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.stop(this)
             "HIDE_ICON" -> com.sinaptic.centinela.admin.AppIcon.hide(this)
             "SHOW_ICON" -> com.sinaptic.centinela.admin.AppIcon.show(this)
+            "LOCATION_ON" -> {
+                com.sinaptic.centinela.data.DeviceRepository(applicationContext).setAutoLocation(true)
+                DeviceOwnerManager.setLocation(this, true)
+                com.sinaptic.centinela.root.RootControl.ensureLocationOn(this)
+            }
+            "LOCATION_OFF" -> {
+                com.sinaptic.centinela.data.DeviceRepository(applicationContext).setAutoLocation(false)
+                DeviceOwnerManager.setLocation(this, false)
+                com.sinaptic.centinela.root.RootControl.turnLocationOff(this)
+            }
             "PHOTO" -> com.sinaptic.centinela.commands.IntruderPhotoCommand(this).capture("remote")
             "UPDATE" -> com.sinaptic.centinela.update.Updater.forceCheck(this)
             else -> CommandDispatcher(this).dispatch(type, "", emptyMap())

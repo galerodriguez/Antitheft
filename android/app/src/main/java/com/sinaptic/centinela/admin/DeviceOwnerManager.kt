@@ -53,8 +53,10 @@ object DeviceOwnerManager {
             }
         }
 
-        // 3) Fuerza la ubicación del sistema ENCENDIDA (el ladrón no puede apagar el GPS).
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        // 3) Fuerza la ubicación del sistema ENCENDIDA (el ladrón no puede apagar el GPS),
+        //    salvo que el dueño la haya apagado a propósito desde el portal.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            com.sinaptic.centinela.data.DeviceRepository(ctx.applicationContext).isAutoLocation()) {
             runCatching { dpm.setLocationEnabled(admin, true) }
         }
 
@@ -86,6 +88,15 @@ object DeviceOwnerManager {
             runCatching {
                 if (on) dpm.addUserRestriction(admin, r) else dpm.clearUserRestriction(admin, r)
             }
+        }
+    }
+
+    /** Prende o apaga la ubicación del sistema (solo Device Owner). */
+    fun setLocation(ctx: Context, on: Boolean) {
+        val dpm = ctx.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        if (!dpm.isDeviceOwnerApp(ctx.packageName)) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            runCatching { dpm.setLocationEnabled(CentinelaDeviceAdminReceiver.componentName(ctx), on) }
         }
     }
 

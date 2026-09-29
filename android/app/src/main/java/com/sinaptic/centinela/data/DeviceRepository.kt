@@ -39,6 +39,10 @@ class DeviceRepository(private val context: Context) {
     private fun deviceId() = prefs().getString("device_id", null)
     private fun authToken() = prefs().getString("auth_token", null)
 
+    /** ¿La app debe mantener la ubicación encendida sola? (true por defecto; el portal lo cambia). */
+    fun isAutoLocation() = prefs().getBoolean("loc_auto", true)
+    fun setAutoLocation(on: Boolean) { prefs().edit().putBoolean("loc_auto", on).apply() }
+
     fun updateFcmToken(token: String) {
         prefs().edit().putString("fcm_token", token).apply()
         val id = deviceId() ?: return

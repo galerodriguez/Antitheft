@@ -1,6 +1,6 @@
 {
-  "versionCode": 17,
-  "versionName": "0.9.3",
+  "versionCode": 19,
+  "versionName": "0.9.5",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Ocultar/mostrar el ícono de la app (desde el portal o con el código *#*#74633277#*#*). Audio con duración a elección o manual. Permisos por sección al compartir, calendario en el historial y fotos en desplegable."
+  "notes": "Prender/apagar ubicación desde el portal, ícono de carga de batería (⚡), audios/fotos/historial con desplegable por día, audio con tope seguro de 1:30, y en rooteados se fuerza el GPS por root."
 }

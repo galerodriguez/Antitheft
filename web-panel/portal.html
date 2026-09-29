@@ -203,6 +203,20 @@
         <button id="btnRegister" class="btn-ghost">Crear cuenta nueva</button>
       </div>
       <div id="loginMsg" class="msg"></div>
+      <details style="margin-top:16px">
+        <summary style="cursor:pointer;color:var(--muted);font-size:13px">📲 Instalar en un teléfono nuevo (Device Owner)</summary>
+        <div style="text-align:center;margin-top:12px">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA8oAAAPKAQAAAABkFJ6ZAAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjk3OTgzOGNhLTZjYTEtNDkwZi1hNjFmLWQ2Yzk4NWE4MTQ0NgAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNoWCn7g5Sz1bShmVNyZwglvwAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6NDY0MzY1ZWItYjk0MS00NzJhLWI2MjgtNTMzNWVkZDYxOGJibHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaMHH5AxOhOfxXUqxg/QO0uIAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYIKkecfRF9KJVI9nX0ezpoqUkz4ivLB2No9tFYD4KwhmvpGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2h9gkic0LPzPklqd4xKufK/AAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFgggxsY3gK7M6tJ6OWy4Rh/FKPcXognLxdCvSsQtWWy9aBkbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYTo5Nzk4MzhjYS02Y2ExLTQ5MGYtYTYxZi1kNmM5ODVhODE0NDYvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDo4ZWIxMWFiZC04NWYzLTQ2YTctODQ3NC1kOWZlYjM5MTU0Y2JyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggqR5x9EX0olUj2dfR7OmipSTPiK8sHY2j20VgPgrCGa+iY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYIBvyW6n9YAdTm3GZ08Kz/B/AXmvr+M9D0B750015nCiHomN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYIMR+WKCG1lJuD66BGHYKLD1ftjGlOsFG4ZxvM/zUipCudGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2WEC3p/fqYb5HH8mc8zz2U9SED/yLTR9N+MDEtryOs0jySsqG12oZQdz0ydLnQqO66Rdlfqn42eeY9Oy0rNUS2R/nDor1lwAADY1JREFUeJztnU2O20gShV+OBHjJAvoAPgrrBn2kPpNvQB2lDmCAtWyAhZhFZkS8oAzMLJhjTOvFoiyJFD9Yi4f4z2b4Tfb41+8iA0ILLbTQQgsttNBCCy200EILLbTQQgv936DbsDva+2drwOcdrbV7v6e993+/Wnv/vAOPN6C/6t/tb8cj+nffAeDRWutfa621vGU877f/r4UWWuh/EhpmZobVzMz2m2HdbwYsB4DFDKsdGJ/hZuPmHQAwbrbNbzbrb81v3m/jydtyoF9N2vaaP7jQQgs9y0ig1v3miuRi1K9iOWBmB1yWANvg39gWI5Xym826HMbbLm5dBKVmQgst9OV2UrPujGExsw2A+1cH/Ba46tnQNX9KihZgG27m/lo8RWomtNBCz7P76b092s1af738vLf1B2CPt589W4bHd0N7fD/6DQ3LcQdwO4DPN7T+ahktbIbPhvF6+bsZPivqNX9woYUWepad8mY9lozgMb2vHkb2lFkm1PqfTJQBnlVDiS+VNxNaaKH/N+hHa60XJ//6+Gbtr4872nsvTkaM2IuYN8P6cQfw+c38z71rWL85ygP+AADrxzdr717drOjfYUILLfQ/Dw2rBi5d3nzsaeEUv5c9/eYtyplU0/TPqCi6VpJ8M6GFFvpSyyrASPt7dp8CT7ORKPOyZ7yyUS3Iro0ubtGSAcA1Mds5FGkKLbTQ1xv5YZE8O3WZ5X1D17pbBngBdGTQUvo8W8ZP7oppJjUTWmihpxjn6rvdnrsszNP+mezHkj6cP2XDUEIbzWneb7YBQ+u2QErNhBZa6EttZMuWKDXCu2e3hTNe1I0W940HlAjSXTWjnJun1koFVWomtNBCX2rpeA2PLONGAN7P7+kxAPB0vnfPUjMtXYhhgh3w4gGAKDJIzYQWWuhrjTP5XcNukeKK4HEHqFa5obh04zNXqXPMuQOZQaP7pGZCCy30pTakZcmkGLdfoPZgnEae2JvbUeXwaUSd6wtSM6GFFvpySzXLnBa1X/RYkmTJv7Ytv/rs4BopXCI5VI0hdKmZ0EILfamV8BCU3cqhcQ8Ux1XaoQGvFlCdk5ppqc/DR88TKTUTWmihL7XiS3nGi5aXed4sM/nuw42okkSLPtsj3ZZ5uOy8lZoJLbTQl1u6Zv3tWLaIkCXwVrNY7WOWOTIr8WVI32n7o1k2rEnNhBZa6Msta5CWLa+ncHOs1CiO1ykVFqs3aLWjxVMyGbdBkabQQgs9xYpvxjsVqWCZKxbps5C5DQDPDJT0GI9B1dFzqZnQQgt9qZ2CzOGbRWYs/DW6kPm1fGs+scnquGRfbiqcOjSEFlroKTakZy+r/mvLK082FVnKFrIsHvjz8gwUDmS5L/c1f3ChhRZ6lg1p8dzX6aSSJwnyrJo7bZ7Yz3RbrsoYJz+5M5ZuntRMaKGFvt4yMsylGT5XXuaeRi8swFejHpAlztyafdp0trrTJjUTWmihJ1jmzXx5D+8GymQ/alN/WfcT+xgtFj/mtFMVPDpj8zV/cKGFFnqWZaT5FCPGLVHEzKWMtCt7PKVUATYANI6+uepp96zQQgs9yzLQzEomH8OUGS/UWXO/mmscT98g6SN/zQ5VAYQWWugZxpEmQJOYHmTmZjLUXWaRHkOObcbyxtKNW3ajyTcTWmihp9hwpaIRo3+2x5aMkuwCIs+/eTBqMaeZ4kbznHz4ZnToSs2EFlroy43yXDwGEEfJAe5QPS/D+NWcOnd3hLjxVQ9FpWZCCy30peaRJnf2k67FRv9ylT03OlkziwIbgGw/4wM5NXUutNBCzzGPB2sz2cJ/eCnjEgcGhA9neZVmAcrbjR6vvJnQQgs9xVJ9yh4Mi7aKmGKy6NqIlNnprAA+TzNOG96jFCrfTGihhZ5o6TzxOlnUPYveg0GnzQGg3H+pAuSSRz7qxPvNlDcTWmihpxipGe238AlL2ghE27XTm0vR2uuCjCXbPnj0XBuBhBZa6FnWA8AuQUC0t3L7hetPdJ6V0JK+SxObnvandRwZoErNhBZa6OvNPa3sds2kWNlvFj1olEujprMIQVeacapHDvstUjOhhRZ6go3k/JK9ZcP8kBKwp5V9GbHurMw4uTN2vhCfaVuj0EILPcmGo5STSEDxr3aUPRh7TfHvAK+i3Xk0gPZvrB6qsjC+5g8utNBCz7LhmwHnbgx3o7izn/21/nV2wVwOs/OWd23kCSmKNIUWWugJNqTF0/mcui9dFnnk0vmAkzXKA7EqIwNPPnxuiRSc1ExooYW+3Nw3ezoOmI/DBMLnAkCT49Rg662xG0ran5wxALwC7TV/cKGFFnqWuRsV2/t3APXIOT6pKVsylkyyWdErV73x5B3wEwL8UE2pmdBCC329pQ7xMoysWsZc+Vp60LiPlkoGZXZzqF6tAkD9ZkILLfQUGzFiOk9WujEA+LYy/0MbsuOUk6J6w07OWJ5yopqm0EILPcGG9GR6zJ2sLGeeIk2WqujpGKVLxGhAbnU0SrIRUmomtNBCX2pDm5CdYn4hDpA7+WsUWsYgeVkVFP22JJHhzZn6zYQWWugplp4WLSXbahUgb86TSrbSW0u6FvVQKo+SMO7yzYQWWugpNqRl4VazEnhy4xgfHeAOGmK5ht+Sc5qneXblzYQWWuh5NtQsmslOi8pYkbifn54Q8wEkh6cRzWG12PmaP7jQQgs9y9w34479c5MYwHNPzzn9gzNjsY8W8OFP7jJbzF+95g8utNBCzzLyzXJlT/b4bwCJEbLbP5vOcslPHlyH9PUySt15p7bUTGihhb7WPJbkWfORPEs/LJysU2bsKfdfWzz2kL79ZpRkU6QptNBCX2+pZsOiaplGI5rL84WaGUPEl+nXZfFA52kKLbTQsyzz/Nkk269keqwvyKCQsUyd8ykn8djIw60eoJKkyTcTWmihrzfPeJXjSrYII3+xG+icQePljTHotMchTcjPcgxKaia00EJfbPf+z+PPv1seQ9KwAFjtqxkWQ8Pys2Xaq63bV/9aW+3rPq4CMHx+NfSry3FvwFez1QCsP+7H8Ot+NEe/5g8utNBCzzJPYx38Iffzx6w5wEOYPTbtF7j9LI9E4WNNdpApbya00EJPMFYzajC71Z6x0n6x+jc8lnQbg5lRAO2f5WQTb9iQmgkttNDX2ilvxtrkaX8bXRtlk3a2cwxn7MlfO286s+LXSc2EFlroa23k9JdQrty46Bd4xWLpGctMW+lLK0Od1HTmHp7UTGihhZ5gHEaiNv/vv+7nL+0cOWHu3f4bAL6wo4abh9RMaKGFnmHkc+X+7PMq2h3kaVG7bLbGdnHz0QDfUcvn2NHwp9RMaKGFvty81eLjDsPnH9bo2uf9sMfbDmA57gC+7vb4fsAeb4A9/vzZv2uPBvT71h9vDevH/cDj/XYA+ELLQ08e34+7AV/++Nf8wYUWWuhZ5sn5XBiL0t4fuS8qU0Z5IBZml8XasTkjMnLDuYvAU76Z0EILfbkNvXIdKgdoInrGzDf9gI868c3/Mace6bYsCmyIvRo5YCA1E1pooS83rgIsFl7VAV5URo5XtNUuR+0j48202ZKROTeWQ6mZ0EILfbl5R0UIj0uVr/CPTWckWrGAcU8frrau0S11N5qXFqRmQgst9LXmThTvvDArgedpbxkdyFRP0fSzUnLDRr0PAK0UkpoJLbTQl9qQlsXDzfN55f4n92rwZ8hXvn8j1j2WRrSy+ExqJrTQQl9vGQVyVxgNknODWfpmHoyWdT/pguVTwtfLvjSpmdBCCz3BPG/GZ5aU5Jmf1LQVTyuN48tMmRm32pYDz6VmQgst9BQblUczGtY8bb7OLv5yvNxozqBH/dpfs6dBT1UBhBZa6OuN643Rth+7MU6TTVaPOvnlLrPcONu/EQ7aeUvaa/7gQgst9Cwbvllpq/Br2QtbSpJbfzWkKg8G7nfwTu2oG0RuTqecCC200JNsSAu17R8cMoZvlicE5GmbpwwaFUWzUECz69GXKzUTWmihr7dMZ6Wu0dFMQN04S67a89WcD6CJAmRfWl6VmgkttNBXm1cB/Cg5ADSJlHFoxpeua0Cqnvtm4eGBP6PRKJ11LrTQQk+yrlcxjkkrG6MH7bSy7LyeMUTw1DPrOhmHDy+a0xRaaKHn2dk3i4y/u1G1YQM8JJAjT9wuWwJUnzXnY51U0xRaaKEnmFXLYzP5M4AbYqOwadF0lkcJZ8rs1HSWXpp8M6GFFnqCkV5RaJnXl9J5AY85eWXZEn5dJsUQ5wyUq5o6F1pooWdZZrc8AZbbGuNUuiX7aG9cv6RNshGC0kNT4chB0yyA0EILPcVceEAzmRxL7gA7aNlqgdihYVEjoJGnHDDgQoF8M6GFFnqWndSMqpYbMlrMjFemzKIUivgusjLgCkeRawiZ1ExooYW+3s5qljEn5bl2AFywvNWYk0PVzMOVDNqt1k2lZkILLfTVdsqb5faffnXLO2PqMg5pOuX5aSqqP3lHvI0lj6ppCi200FOsn4mJRz9H84YGAA3LzfB4B4BlHJsJfN77VQO+YI/3BmDZ+wUAXw3rxx0Abtaw7BgPwM3a+uMP+KmcYa/5gwsttNCTrNl/vmeOPV7zBxdaaKGFFlpooYUWWmihhRZaaKGFFvr/Av1vhv/fuNzZpCgAAAAASUVORK5CYII=" alt="QR instalacion Device Owner" style="width:210px;max-width:100%;background:#fff;padding:8px;border-radius:12px" />
+          <p class="sub" style="margin-top:10px;text-align:left;line-height:1.5">
+            <b>1.</b> Reseteá el teléfono de fábrica.<br>
+            <b>2.</b> En la pantalla de bienvenida, tocá <b>6 veces</b> seguidas.<br>
+            <b>3.</b> Conectá el <b>WiFi</b>.<br>
+            <b>4.</b> Escaneá este QR: descarga e instala Antitheft con control total.<br>
+            <b>5.</b> Abrí la app, creá el PIN y vinculá tu cuenta.<br>
+            <span style="opacity:.8">Nota: en teléfonos <b>rooteados</b> (ej. Samsung con Knox) el QR no funciona; ahí se instala por ADB.</span>
+          </p>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -498,32 +512,39 @@
           <label class="switch"><input type="checkbox" id="tgPhoto"><span class="slider"></span></label>
         </div>
 
-        <div class="section-label">Comandos</div>
+        <div class="section-label">Comandos · Accionar</div>
         <div class="cmds">
-          <button id="cmdLocate" class="btn-primary">Localizar</button>
-          <button id="cmdAlarm">Alarma</button>
-          <button id="cmdStopAlarm" class="btn-danger">Detener alarma</button>
-          <button id="cmdLock">Bloquear</button>
-          <button id="cmdKiosk" class="btn-danger">Bloqueo extremo</button>
-          <button id="cmdMessage">Enviar mensaje</button>
-          <button id="cmdUnlock">Desbloquear</button>
-          <button id="cmdPhoto">Tomar foto</button>
-          <button id="cmdOpen">Abrir (quitar PIN)</button>
-          <button id="cmdClose">Pedir PIN</button>
-          <button id="cmdHideIcon">Ocultar ícono</button>
-          <button id="cmdShowIcon">Mostrar ícono</button>
-          <button id="cmdUpdate">Actualizar app</button>
+          <button id="cmdLocate" class="btn-primary" title="Pide la ubicación actual del teléfono y la muestra en el mapa.">Localizar</button>
+          <button id="cmdAlarm" title="Hace sonar una alarma fuerte (aunque esté en silencio) y dice el mensaje en voz alta.">Alarma</button>
+          <button id="cmdLock" title="Bloquea la pantalla y muestra tu mensaje encima.">Bloquear</button>
+          <button id="cmdKiosk" class="btn-danger" title="Deja el teléfono atrapado en la pantalla de bloqueo: no se puede salir hasta 'Desbloquear'.">Bloqueo extremo</button>
+          <button id="cmdMessage" title="Muestra un mensaje en pantalla SIN bloquear el teléfono.">Enviar mensaje</button>
+          <button id="cmdPhoto" title="Saca fotos con la cámara (foto del intruso) y las sube al panel.">Tomar foto</button>
+          <button id="cmdOpen" title="Quita el PIN/patrón del sistema (deja el teléfono abierto). Útil si te olvidaste el PIN.">Abrir (quitar PIN)</button>
+          <button id="cmdLocOff" title="Apaga el GPS y deja de forzarlo, hasta que toques 'Prender ubicación'.">Apagar ubicación</button>
+          <button id="cmdHideIcon" title="Esconde el ícono del menú (la app sigue funcionando). Se reabre con *#*#74633277#*#* o 'Mostrar ícono'.">Ocultar ícono</button>
+          <button id="cmdUpdate" title="Instala la última versión de la app.">Actualizar app</button>
         </div>
+
+        <div class="section-label">Comandos · Revertir / apagar</div>
+        <div class="cmds">
+          <button id="cmdStopAlarm" class="btn-danger" title="Apaga la alarma que está sonando.">Detener alarma</button>
+          <button id="cmdUnlock" title="Saca el bloqueo o el 'bloqueo extremo' y libera la pantalla.">Desbloquear</button>
+          <button id="cmdClose" title="Vuelve a activar el PIN/patrón del sistema que quitaste con 'Abrir'.">Pedir PIN</button>
+          <button id="cmdLocOn" title="Prende el GPS y vuelve a forzarlo encendido.">Prender ubicación</button>
+          <button id="cmdShowIcon" title="Vuelve a mostrar el ícono de la app en el menú.">Mostrar ícono</button>
+        </div>
+
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <label class="sub" style="margin:0">🎙️ Audio:</label>
-          <select id="audioSecs" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
+          <label class="sub" style="margin:0" title="Duración del clip de audio. El máximo (1:30) es el más largo que entra en el plan gratis de Firebase.">🎙️ Audio:</label>
+          <select id="audioSecs" title="Elegí cuántos segundos grabar. 1:30 es el tope seguro." style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
             <option value="8">8 segundos</option>
             <option value="15">15 segundos</option>
             <option value="30">30 segundos</option>
-            <option value="60">60 segundos</option>
-            <option value="manual">Manual (yo lo detengo)</option>
+            <option value="60">1 minuto</option>
+            <option value="90">1 min 30 seg (máximo)</option>
           </select>
-          <button id="cmdAudio">Grabar audio</button>
+          <button id="cmdAudio" title="Graba audio del ambiente por la duración elegida y lo sube al panel.">Grabar audio</button>
         </div>
         <input id="lockMsg" placeholder="Mensaje (bloquear / mostrar / decir en la alarma)" style="margin-top:10px" />
         ` : ''}
@@ -591,26 +612,7 @@
         sendCommand(ref, "KIOSK", { message: $("lockMsg").value.trim() });
     };
     $("cmdPhoto").onclick = () => sendCommand(ref, "PHOTO");
-    let audioManualActive = false;
-    $("cmdAudio").onclick = () => {
-      const sel = $("audioSecs").value;
-      if (audioManualActive) {
-        // Estaba grabando en manual → detener y subir.
-        sendCommand(ref, "STOP_AUDIO");
-        audioManualActive = false;
-        $("cmdAudio").textContent = "Grabar audio";
-        $("cmdAudio").classList.remove("btn-danger");
-        return;
-      }
-      if (sel === "manual") {
-        sendCommand(ref, "AUDIO", { message: "manual" });
-        audioManualActive = true;
-        $("cmdAudio").textContent = "⏹ Detener audio";
-        $("cmdAudio").classList.add("btn-danger");
-      } else {
-        sendCommand(ref, "AUDIO", { message: sel });
-      }
-    };
+    $("cmdAudio").onclick = () => sendCommand(ref, "AUDIO", { message: $("audioSecs").value });
     $("cmdOpen").onclick = () => {
       if (window.confirm("¿Quitar el PIN/patrón del teléfono? Va a quedar abierto sin bloqueo."))
         sendCommand(ref, "OPEN");
@@ -621,6 +623,11 @@
         sendCommand(ref, "HIDE_ICON");
     };
     $("cmdShowIcon").onclick = () => sendCommand(ref, "SHOW_ICON");
+    $("cmdLocOn").onclick = () => sendCommand(ref, "LOCATION_ON");
+    $("cmdLocOff").onclick = () => {
+      if (window.confirm("¿Apagar la ubicación del teléfono? La app dejará de forzarla hasta que toques 'Prender ubicación'."))
+        sendCommand(ref, "LOCATION_OFF");
+    };
     $("cmdUpdate").onclick = () => sendCommand(ref, "UPDATE");
     const bF = $("btnFollow"); if (bF) bF.onclick = () => toggleFollow(ref);
     const bR = $("btnRename"); if (bR) bR.onclick = () => {
@@ -760,9 +767,11 @@
   function statusHTML(st) {
     if (!st) return '<span class="chip live-off"><span class="dot off"></span>Sin datos</span> <span class="chip-when">Aún no reportó estado.</span>';
     const bat = (st.battery != null && st.battery >= 0) ? st.battery + "%" : "—";
+    const batIco = st.charging ? "⚡" : "🔋";
+    const batExtra = st.charging ? " (cargando)" : "";
     const online = estaEnLinea(st.ts);
     const live = `<span class="chip ${online ? "live-on" : "live-off"}"><span class="dot ${online ? "on" : "off"}"></span>${online ? "En línea" : "Sin conexión"}</span>`;
-    return `${live} <span class="chip">🔋 ${bat}</span> <span class="chip">📶 ${st.network || "—"}</span> <span class="chip-when">${hace(st.ts)}</span>`;
+    return `${live} <span class="chip">${batIco} ${bat}${batExtra}</span> <span class="chip">📶 ${st.network || "—"}</span> <span class="chip-when">${hace(st.ts)}</span>`;
   }
   function deviceMeta(metaEl, d) {
     if (!metaEl) return;
@@ -785,6 +794,20 @@
     if (same(d, y)) return "Ayer";
     return d.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" });
   }
+  // Crea un grupo desplegable por día (HOY, AYER…). Devuelve el contenedor donde meter los ítems.
+  function dayGroup(box, dayText, openIt) {
+    const det = document.createElement("details");
+    det.className = "day-group";
+    if (openIt) det.open = true;
+    const sum = document.createElement("summary");
+    sum.className = "hist-day";
+    sum.style.cssText = "cursor:pointer;list-style:revert";
+    sum.textContent = dayText;
+    det.appendChild(sum);
+    box.appendChild(det);
+    return det;
+  }
+
   // Agrupa puntos consecutivos cercanos (≤70 m, sin cortes de +20 min) en una sola estadía.
   function buildStays(ptsDesc) {
     const pts = [...ptsDesc].reverse(); // a orden cronológico
@@ -899,15 +922,10 @@ ${marks}</Document></kml>`;
     wrap.hidden = false;
     const cnt = $("audiosCount"); if (cnt) cnt.textContent = items.length;
     box.innerHTML = "";
-    let lastDay = null;
+    let lastDay = null, grp = null, firstDay = true;
     items.forEach((a) => {
       const dl = dayLabel(a.ts);
-      if (dl !== lastDay) {
-        lastDay = dl;
-        const hd = document.createElement("div");
-        hd.className = "hist-day"; hd.textContent = dl;
-        box.appendChild(hd);
-      }
+      if (dl !== lastDay) { lastDay = dl; grp = dayGroup(box, dl, firstDay); firstDay = false; }
       const row = document.createElement("div");
       row.className = "hist-item";
       row.style.cssText = "flex-direction:column;align-items:stretch;gap:8px";
@@ -932,7 +950,7 @@ ${marks}</Document></kml>`;
       };
       acts.appendChild(bDl); acts.appendChild(bDel);
       row.appendChild(acts);
-      box.appendChild(row);
+      grp.appendChild(row);
     });
   }
   // Panel dedicado de fotos de intruso: lista por día, con vista previa, descargar y eliminar.
@@ -943,15 +961,10 @@ ${marks}</Document></kml>`;
     wrap.hidden = false;
     const cnt = $("photosCount"); if (cnt) cnt.textContent = items.length;
     box.innerHTML = "";
-    let lastDay = null;
+    let lastDay = null, grp = null, firstDay = true;
     items.forEach((a) => {
       const dl = dayLabel(a.ts);
-      if (dl !== lastDay) {
-        lastDay = dl;
-        const hd = document.createElement("div");
-        hd.className = "hist-day"; hd.textContent = dl;
-        box.appendChild(hd);
-      }
+      if (dl !== lastDay) { lastDay = dl; grp = dayGroup(box, dl, firstDay); firstDay = false; }
       const row = document.createElement("div");
       row.className = "photo-item";
       const img = document.createElement("img");
@@ -977,7 +990,7 @@ ${marks}</Document></kml>`;
       acts.appendChild(bView); acts.appendChild(bDl); acts.appendChild(bDel);
       meta.appendChild(time); meta.appendChild(acts);
       row.appendChild(img); row.appendChild(meta);
-      box.appendChild(row);
+      grp.appendChild(row);
     });
   }
 
@@ -1015,16 +1028,10 @@ ${marks}</Document></kml>`;
     }
     const stays = buildStays(pts);
     h.innerHTML = "";
-    let lastDay = null;
+    let lastDay = null, grp = null, firstDay = true;
     stays.forEach((s) => {
       const dl = dayLabel(s.startTs);
-      if (dl !== lastDay) {
-        lastDay = dl;
-        const hd = document.createElement("div");
-        hd.className = "hist-day";
-        hd.textContent = dl;
-        h.appendChild(hd);
-      }
+      if (dl !== lastDay) { lastDay = dl; grp = dayGroup(h, dl, firstDay); firstDay = false; }
       const moved = s.endTs - s.startTs > 60000;
       const el = document.createElement("div");
       el.className = "hist-item";
@@ -1040,7 +1047,7 @@ ${marks}</Document></kml>`;
       el.querySelector(".hi-co").textContent = Number(s.lat).toFixed(5) + ", " + Number(s.lng).toFixed(5);
       el.querySelector(".dur").textContent = durTxt;
       el.onclick = () => { ensureMap().setView([s.lat, s.lng], 16); };
-      h.appendChild(el);
+      grp.appendChild(el);
     });
     showOnMap(stays, false);
   }
