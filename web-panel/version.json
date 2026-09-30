@@ -1,6 +1,6 @@
 {
-  "versionCode": 19,
-  "versionName": "0.9.5",
+  "versionCode": 20,
+  "versionName": "0.9.6",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Prender/apagar ubicación desde el portal, ícono de carga de batería (⚡), audios/fotos/historial con desplegable por día, audio con tope seguro de 1:30, y en rooteados se fuerza el GPS por root."
+  "notes": "Tocar la notificación permanente abre la app (vía segura para reentrar aunque el ícono esté oculto). Prender/apagar ubicación, ícono de carga, desplegables por día, audio con tope y forzado de GPS por root."
 }

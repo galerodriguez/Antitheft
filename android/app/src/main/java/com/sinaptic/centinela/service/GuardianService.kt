@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.app.admin.DevicePolicyManager
 import android.content.Context
@@ -224,12 +225,19 @@ class GuardianService : Service() {
                 NotificationChannel(CHANNEL, "Antitheft", NotificationManager.IMPORTANCE_LOW)
             )
         }
+        // Tocar la notificación SIEMPRE abre la app (vía segura para reabrir aunque el ícono esté oculto).
+        val openIntent = Intent(this, com.sinaptic.centinela.ui.MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val piFlags = PendingIntent.FLAG_UPDATE_CURRENT or
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+        val contentPi = PendingIntent.getActivity(this, 0, openIntent, piFlags)
         return NotificationCompat.Builder(this, CHANNEL)
             .setContentTitle(getString(R.string.notif_title))
             .setContentText(getString(R.string.notif_text))
             .setSmallIcon(R.drawable.ic_shield)
             .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
+            .setContentIntent(contentPi)
             .build()
     }
 

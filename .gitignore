@@ -1,15 +1,27 @@
-# Android
-android/.gradle/
+# ─── Credenciales / secretos: NUNCA subir al repo ───
+# Clave de cuenta de servicio de Google/Firebase (server key)
+*-fbsvc-*.json
+*service-account*.json
+*serviceAccount*.json
+Servicios de Antitheft/
+Servicios de Antitheft/**
+# (google-services.json del cliente se maneja aparte; si querés, descomentá:)
+# android/app/google-services.json
+
+# ─── Build de Android ───
+*.iml
+.gradle/
+/local.properties
+**/build/
 android/build/
 android/app/build/
-android/local.properties
-
-# Backend
-backend/node_modules/
-backend/serviceAccount.json
-.env
-
-# Editor
 .idea/
-*.iml
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ─── Sistema ───
 .DS_Store
+Thumbs.db
