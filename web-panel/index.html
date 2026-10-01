@@ -182,6 +182,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.9.6</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -553,7 +554,8 @@
         <div class="section-label">Ubicación</div>
         <div class="cmds" style="margin-bottom:10px">
           ${admin ? '<button id="btnFollow">▶ Seguir en vivo</button>' : ''}
-          <button id="btnKml">Exportar recorrido (KML)</button>
+          <button id="btnMapsLink" class="btn-primary" title="Copia y abre un link de Google Maps con la última ubicación, para compartir.">📍 Link de Google Maps</button>
+          <button id="btnKml" title="Descarga el recorrido del día como archivo KML (Google Earth / Maps).">Exportar recorrido (KML)</button>
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
           <label class="sub" style="margin:0">📅 Día:</label>
@@ -589,6 +591,7 @@
       </div>`;
 
     const bKml = $("btnKml"); if (bKml) bKml.onclick = () => exportKml(); // disponible también en solo-lectura
+    const bMaps = $("btnMapsLink"); if (bMaps) bMaps.onclick = () => shareMapsLink();
     const hd = $("histDate"); if (hd) hd.onchange = () => drawHistory();
     const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; drawHistory(); };
     const rSel = $("shareRole"); if (rSel) rSel.onchange = () => { const ss = $("shareSections"); if (ss) ss.style.opacity = (rSel.value === "viewer") ? "1" : "0.4"; };
@@ -884,6 +887,26 @@
   }
 
   // Exporta el recorrido cargado en el mapa a un archivo KML (Google Earth / Maps).
+  // Arma un link de Google Maps de la última ubicación, lo copia al portapapeles y lo abre.
+  function shareMapsLink() {
+    // Última ubicación: el punto más nuevo del historial, o la lastLocation del dispositivo.
+    let lat = null, lng = null;
+    if (lastPts && lastPts.length) { lat = lastPts[0].lat; lng = lastPts[0].lng; }
+    else if (selData && selData.lastLocation) { lat = selData.lastLocation.lat; lng = selData.lastLocation.lng; }
+    if (lat == null || lng == null) { window.alert("Todavía no hay una ubicación para compartir. Tocá 'Localizar' primero."); return; }
+    const url = "https://www.google.com/maps?q=" + Number(lat).toFixed(6) + "," + Number(lng).toFixed(6);
+    // Copiar al portapapeles (si el navegador lo permite).
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        () => window.alert("Link copiado:\n\n" + url + "\n\nSe abre en una pestaña nueva para compartir."),
+        () => window.prompt("Copiá este link de Google Maps:", url)
+      );
+    } else {
+      window.prompt("Copiá este link de Google Maps:", url);
+    }
+    window.open(url, "_blank");
+  }
+
   function exportKml() {
     if (!lastPts.length) { window.alert("No hay ubicaciones para exportar todavía."); return; }
     const asc = [...lastPts].reverse();
