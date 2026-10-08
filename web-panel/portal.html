@@ -182,7 +182,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.9.7</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.9.8</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -254,7 +254,7 @@
   let followTimer = null, lastPts = [];
   let myUid = null, myEmail = null, selRole = "admin", selOwner = null, selSections = null;
   let ownerDevices = {}, deviceUnsubs = [], membersUnsub = null;
-  let allHistPts = [];
+  let allHistPts = [], liveHistPts = [];
 
   // --- Permisos por sección (para acceso compartido) ---
   function fullSections() { return { status: true, location: true, alerts: true, audio: true, photos: true }; }
@@ -445,7 +445,10 @@
         .onSnapshot((snap) => {
           const pts = [];
           snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
-          renderHistory(pts);
+          liveHistPts = pts;
+          // Si NO hay un día específico elegido, mostramos lo reciente en vivo.
+          const sel = $("histDate") ? $("histDate").value : "";
+          if (!sel) renderHistory(pts);
         }, () => {});
     }
 
@@ -592,8 +595,8 @@
 
     const bKml = $("btnKml"); if (bKml) bKml.onclick = () => exportKml(); // disponible también en solo-lectura
     const bMaps = $("btnMapsLink"); if (bMaps) bMaps.onclick = () => shareMapsLink();
-    const hd = $("histDate"); if (hd) hd.onchange = () => drawHistory();
-    const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; drawHistory(); };
+    const hd = $("histDate"); if (hd) hd.onchange = () => { if (hd.value) loadDay(ref, hd.value); else renderHistory(liveHistPts); };
+    const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; renderHistory(liveHistPts); };
     const rSel = $("shareRole"); if (rSel) rSel.onchange = () => { const ss = $("shareSections"); if (ss) ss.style.opacity = (rSel.value === "viewer") ? "1" : "0.4"; };
     if (admin && isOwn) { renderMembers(); $("btnShare").onclick = () => inviteMember(); }
     if (!admin) return; // solo lectura: no cableamos comandos ni toggles
@@ -1026,14 +1029,31 @@ ${marks}</Document></kml>`;
   // Guarda TODOS los puntos cargados y dibuja según el día elegido en el calendario.
   function renderHistory(pts) {
     allHistPts = pts || [];
-    // Ajusta los límites del calendario a los días con datos.
+    // El calendario permite elegir cualquier día pasado (el tope es hoy). No limitamos el mínimo
+    // para poder consultar días viejos aunque no estén en los últimos puntos cargados.
     const hd = $("histDate");
-    if (hd && allHistPts.length) {
-      const days = allHistPts.map(p => p.ts).filter(Boolean);
-      hd.min = toDateInput(Math.min(...days));
-      hd.max = toDateInput(Math.max(...days));
-    }
+    if (hd) { hd.removeAttribute("min"); hd.max = toDateInput(Date.now()); }
     drawHistory();
+  }
+
+  // Consulta en la base TODAS las ubicaciones de un día específico (no solo las recientes).
+  async function loadDay(ref, dateStr) {
+    const h = $("history");
+    if (h) h.innerHTML = '<div class="empty" style="padding:20px">Buscando ubicaciones de ese día…</div>';
+    const p = dateStr.split("-").map(Number);
+    const start = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0).getTime();
+    const end = new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999).getTime();
+    try {
+      const snap = await ref.collection("locations")
+        .where("ts", ">=", start).where("ts", "<=", end)
+        .orderBy("ts", "desc").limit(1500).get();
+      const pts = [];
+      snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
+      allHistPts = pts;
+      drawHistory();
+    } catch (e) {
+      if (h) h.innerHTML = '<div class="empty" style="padding:20px">No se pudo cargar ese día: ' + (e.message || e) + '</div>';
+    }
   }
   function drawHistory() {
     const h = $("history");
