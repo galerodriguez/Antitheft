@@ -28,6 +28,39 @@
     color-scheme: dark;
   }
 
+  /* ===== Skins (3 apariencias elegibles) ===== */
+  :root[data-skin="claro"]{
+    --bg:#f6f7f9;--card:#fff;--card-2:#eef1f5;--border:#dfe3e8;--text:#1f2328;--muted:#5b636d;
+    --primary:#1f6feb;--primary-ink:#fff;--danger:#cf222e;--good:#1a7f37;
+    --shadow:0 1px 2px rgba(0,0,0,.06),0 6px 20px rgba(0,0,0,.06);color-scheme:light;}
+  :root[data-skin="oscuro"]{
+    --bg:#0d1117;--card:#161b22;--card-2:#1c222b;--border:#30363d;--text:#e6edf3;--muted:#8b949e;
+    --primary:#4c8dff;--primary-ink:#0b1220;--danger:#ff7b72;--good:#3fb950;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.3);color-scheme:dark;}
+  :root[data-skin="indigo"]{
+    --bg:#131029;--card:#1d1942;--card-2:#262050;--border:#3b336e;--text:#ece9ff;--muted:#a79fd6;
+    --primary:#8b7bff;--primary-ink:#140f2e;--danger:#ff8097;--good:#56e0b0;
+    --shadow:0 1px 2px rgba(0,0,0,.45),0 10px 30px rgba(60,30,120,.35);color-scheme:dark;}
+
+  /* ===== Accesos directos + pestañas ===== */
+  .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 4px}
+  .qbtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;font-size:12px;
+    font-weight:700;line-height:1.15;text-align:center;background:var(--card-2);border:1px solid var(--border)}
+  .qbtn .em{font-size:22px}
+  .qbtn.primary{background:var(--primary);color:var(--primary-ink);border-color:var(--primary)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 14px;border-bottom:1px solid var(--border);padding-bottom:10px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 10px;font-size:10.5px;
+    font-weight:700;background:transparent;border:1px solid transparent;color:var(--muted);flex:1;min-width:58px}
+  .tab .em{font-size:19px}
+  .tab.active{background:var(--card-2);border-color:var(--border);color:var(--text)}
+  .tabpanel{display:none}
+  .tabpanel.active{display:block}
+  .skins{display:flex;gap:8px;flex-wrap:wrap}
+  .skin-opt{display:flex;align-items:center;gap:6px;padding:8px 12px;cursor:pointer;
+    border:1px solid var(--border);border-radius:10px;font-size:13px;background:var(--card)}
+  .skin-opt.sel{border-color:var(--primary);color:var(--primary);font-weight:700}
+  .skin-dot{width:16px;height:16px;border-radius:50%;border:1px solid var(--border);display:inline-block}
+
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--bg); color: var(--text);
@@ -185,7 +218,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.9.9</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.0</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -250,6 +283,14 @@
   const auth = firebase.auth();
   const db = firebase.firestore();
   const $ = (id) => document.getElementById(id);
+
+  // --- Skin (apariencia) elegible y persistente ---
+  function applySkin(s) {
+    document.documentElement.setAttribute("data-skin", s);
+    try { localStorage.setItem("skin", s); } catch (e) {}
+    document.querySelectorAll(".skin-opt").forEach(b => b.classList.toggle("sel", b.dataset.skin === s));
+  }
+  try { const _s = localStorage.getItem("skin"); if (_s) document.documentElement.setAttribute("data-skin", _s); } catch (e) {}
 
   let devicesUnsub = null, deviceUnsub = null, locUnsub = null, alertsUnsub = null, selectedId = null;
   let map = null, lastMarker = null, trackLine = null, histMarkers = [], selMarker = null;
@@ -486,115 +527,158 @@
         ${!admin ? '<div class="chip" style="margin-top:8px">👁️ Solo lectura</div>' : ''}
         ${(admin || sec.status) ? '<div id="dStatus" class="statusrow"></div>' : ''}
 
+        ${admin ? `
+        <div class="quick">
+          <button id="qaLocate" class="qbtn primary"><span class="em">📍</span>Localizar</button>
+          <button id="qaPhoto" class="qbtn"><span class="em">📷</span>Tomar foto</button>
+          <button id="qaAudio" class="qbtn"><span class="em">🎙️</span>Grabar audio 1 min</button>
+        </div>` : ''}
+
+        <div class="tabs">
+          ${admin ? '<button class="tab" data-tab="funciones"><span class="em">🛠️</span>Funciones</button>' : ''}
+          ${(admin || sec.alerts) ? '<button class="tab" data-tab="alertas"><span class="em">🔔</span>Alertas</button>' : ''}
+          ${(admin || sec.audio) ? '<button class="tab" data-tab="audios"><span class="em">🎙️</span>Audios</button>' : ''}
+          ${(admin || sec.photos) ? '<button class="tab" data-tab="fotos"><span class="em">📷</span>Fotos</button>' : ''}
+          ${(admin || sec.location) ? '<button class="tab" data-tab="ubicacion"><span class="em">🗺️</span>Ubicación</button>' : ''}
+          ${admin ? '<button class="tab" data-tab="config"><span class="em">⚙️</span>Ajustes</button>' : ''}
+        </div>
+
+        ${admin ? `
+        <div class="tabpanel" data-panel="funciones">
+          <div class="toggle-row first">
+            <div class="txt"><div class="t">Compartir ubicación (Familiar)</div><div class="d">Rastreo en segundo plano</div></div>
+            <label class="switch"><input type="checkbox" id="tgTracking"><span class="slider"></span></label>
+          </div>
+          <div class="toggle-row">
+            <div class="txt"><div class="t">Foto antirrobo</div><div class="d">Captura tras PIN fallidos</div></div>
+            <label class="switch"><input type="checkbox" id="tgPhoto"><span class="slider"></span></label>
+          </div>
+        </div>` : ''}
+
         ${(admin || sec.alerts) ? `
-        <div id="alertsWrap" hidden>
-          <div class="section-label">Alertas</div>
-          <div id="alerts"></div>
+        <div class="tabpanel" data-panel="alertas">
+          <div id="alertsWrap"><div id="alerts"></div></div>
         </div>` : ''}
 
         ${(admin || sec.audio) ? `
-        <div id="audiosWrap" hidden>
-          <details class="photos-details">
-            <summary class="section-label" style="cursor:pointer">Audios grabados <span id="audiosCount" class="chip" style="margin-left:6px"></span></summary>
-            <div id="audios" class="history" style="margin-top:8px"></div>
-          </details>
+        <div class="tabpanel" data-panel="audios">
+          <div id="audiosWrap">
+            <div class="section-label">Audios grabados <span id="audiosCount" class="chip" style="margin-left:6px"></span></div>
+            <div id="audios" class="history"></div>
+          </div>
         </div>` : ''}
 
         ${(admin || sec.photos) ? `
-        <div id="photosWrap" hidden>
-          <details class="photos-details">
-            <summary class="section-label" style="cursor:pointer">Fotos de intruso <span id="photosCount" class="chip" style="margin-left:6px"></span></summary>
-            <div id="photos" class="history" style="margin-top:8px"></div>
-          </details>
+        <div class="tabpanel" data-panel="fotos">
+          <div id="photosWrap">
+            <div class="section-label">Fotos de intruso <span id="photosCount" class="chip" style="margin-left:6px"></span></div>
+            <div id="photos" class="history"></div>
+          </div>
+        </div>` : ''}
+
+        ${(admin || sec.location) ? `
+        <div class="tabpanel" data-panel="ubicacion">
+          <div class="cmds" style="margin-bottom:10px">
+            ${admin ? '<button id="btnFollow">▶ Seguir en vivo</button>' : ''}
+            <button id="btnMapsLink" class="btn-primary" title="Copia y abre un link de Google Maps con la última ubicación, para compartir.">📍 Link de Google Maps</button>
+            <button id="btnKml" title="Descarga el recorrido del día como archivo KML (Google Earth / Maps).">Exportar recorrido (KML)</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <label class="sub" style="margin:0">📅 Día:</label>
+            <input type="date" id="histDate" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
+            <button id="btnAllDays" class="btn-ghost" style="padding:8px 12px">Ver todos</button>
+          </div>
+          <div id="map"></div>
+          <div id="history" class="history"></div>
         </div>` : ''}
 
         ${admin ? `
-        <div class="section-label">Funciones</div>
-        <div class="toggle-row first">
-          <div class="txt"><div class="t">Compartir ubicación (Familiar)</div><div class="d">Rastreo en segundo plano</div></div>
-          <label class="switch"><input type="checkbox" id="tgTracking"><span class="slider"></span></label>
-        </div>
-        <div class="toggle-row">
-          <div class="txt"><div class="t">Foto antirrobo</div><div class="d">Captura tras PIN fallidos</div></div>
-          <label class="switch"><input type="checkbox" id="tgPhoto"><span class="slider"></span></label>
-        </div>
-
-        <div class="section-label">Comandos · Accionar</div>
-        <div class="cmds">
-          <button id="cmdLocate" class="btn-primary" title="Pide la ubicación actual del teléfono y la muestra en el mapa.">Localizar</button>
-          <button id="cmdAlarm" title="Hace sonar una alarma fuerte (aunque esté en silencio) y dice el mensaje en voz alta.">Alarma</button>
-          <button id="cmdLock" title="Bloquea la pantalla y muestra tu mensaje encima.">Bloquear</button>
-          <button id="cmdKiosk" class="btn-danger" title="Deja el teléfono atrapado en la pantalla de bloqueo: no se puede salir hasta 'Desbloquear'.">Bloqueo extremo</button>
-          <button id="cmdMessage" title="Muestra un mensaje en pantalla SIN bloquear el teléfono.">Enviar mensaje</button>
-          <button id="cmdPhoto" title="Saca fotos con la cámara (foto del intruso) y las sube al panel.">Tomar foto</button>
-          <button id="cmdOpen" title="Quita el PIN/patrón del sistema (deja el teléfono abierto). Útil si te olvidaste el PIN.">Abrir (quitar PIN)</button>
-          <button id="cmdLocOff" title="Apaga el GPS y deja de forzarlo, hasta que toques 'Prender ubicación'.">Apagar ubicación</button>
-          <button id="cmdHideIcon" title="Esconde el ícono del menú (la app sigue funcionando). Se reabre con *#*#74633277#*#* o 'Mostrar ícono'.">Ocultar ícono</button>
-          <button id="cmdUpdate" title="Instala la última versión de la app.">Actualizar app</button>
-        </div>
-
-        <div class="section-label">Comandos · Revertir / apagar</div>
-        <div class="cmds">
-          <button id="cmdStopAlarm" class="btn-danger" title="Apaga la alarma que está sonando.">Detener alarma</button>
-          <button id="cmdUnlock" title="Saca el bloqueo o el 'bloqueo extremo' y libera la pantalla.">Desbloquear</button>
-          <button id="cmdClose" title="Vuelve a activar el PIN/patrón del sistema que quitaste con 'Abrir'.">Pedir PIN</button>
-          <button id="cmdLocOn" title="Prende el GPS y vuelve a forzarlo encendido.">Prender ubicación</button>
-          <button id="cmdShowIcon" title="Vuelve a mostrar el ícono de la app en el menú.">Mostrar ícono</button>
-        </div>
-
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
-          <label class="sub" style="margin:0" title="Duración del clip de audio. El máximo (1:30) es el más largo que entra en el plan gratis de Firebase.">🎙️ Audio:</label>
-          <select id="audioSecs" title="Elegí cuántos segundos grabar. 1:30 es el tope seguro." style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
-            <option value="8">8 segundos</option>
-            <option value="15">15 segundos</option>
-            <option value="30">30 segundos</option>
-            <option value="60" selected>1 minuto</option>
-            <option value="90">1 min 30 seg (máximo)</option>
-          </select>
-          <button id="cmdAudio" title="Graba audio del ambiente por la duración elegida y lo sube al panel.">Grabar audio</button>
-        </div>
-        <input id="lockMsg" placeholder="Mensaje (bloquear / mostrar / decir en la alarma)" style="margin-top:10px" />
-        ` : ''}
-
-        ${(admin || sec.location) ? `
-        <div class="section-label">Ubicación</div>
-        <div class="cmds" style="margin-bottom:10px">
-          ${admin ? '<button id="btnFollow">▶ Seguir en vivo</button>' : ''}
-          <button id="btnMapsLink" class="btn-primary" title="Copia y abre un link de Google Maps con la última ubicación, para compartir.">📍 Link de Google Maps</button>
-          <button id="btnKml" title="Descarga el recorrido del día como archivo KML (Google Earth / Maps).">Exportar recorrido (KML)</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-          <label class="sub" style="margin:0">📅 Día:</label>
-          <input type="date" id="histDate" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
-          <button id="btnAllDays" class="btn-ghost" style="padding:8px 12px">Ver todos</button>
-        </div>
-        <div id="map"></div>
-        <div id="history" class="history"></div>` : ''}
-
-        ${(admin && isOwn) ? `
-        <div class="section-label">Compartir acceso</div>
-        <div id="membersList"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
-          <input id="shareEmail" type="email" placeholder="email de la persona" style="flex:1;min-width:160px" />
-          <select id="shareRole" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
-            <option value="viewer">Ver</option>
-            <option value="admin">Control total</option>
-          </select>
-          <button id="btnShare" class="btn-primary">Invitar</button>
-        </div>
-        <div id="shareSections" style="margin-top:10px">
-          <div class="sub" style="margin-bottom:6px">Qué puede ver (solo para el rol "Ver"):</div>
-          <div style="display:flex;flex-wrap:wrap;gap:12px">
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="status" checked> Estado y batería</label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="location" checked> Ubicación</label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="alerts" checked> Alertas</label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="audio" checked> Audios grabados</label>
-            <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="photos" checked> Fotos de intruso</label>
+        <div class="tabpanel" data-panel="config">
+          <div class="section-label">Comandos · Accionar</div>
+          <div class="cmds">
+            <button id="cmdLocate" class="btn-primary" title="Pide la ubicación actual del teléfono y la muestra en el mapa.">Localizar</button>
+            <button id="cmdAlarm" title="Hace sonar una alarma fuerte (aunque esté en silencio) y dice el mensaje en voz alta.">Alarma</button>
+            <button id="cmdLock" title="Bloquea la pantalla y muestra tu mensaje encima.">Bloquear</button>
+            <button id="cmdKiosk" class="btn-danger" title="Deja el teléfono atrapado en la pantalla de bloqueo: no se puede salir hasta 'Desbloquear'.">Bloqueo extremo</button>
+            <button id="cmdMessage" title="Muestra un mensaje en pantalla SIN bloquear el teléfono.">Enviar mensaje</button>
+            <button id="cmdPhoto" title="Saca fotos con la cámara (foto del intruso) y las sube al panel.">Tomar foto</button>
+            <button id="cmdOpen" title="Quita el PIN/patrón del sistema (deja el teléfono abierto). Útil si te olvidaste el PIN.">Abrir (quitar PIN)</button>
+            <button id="cmdLocOff" title="Apaga el GPS y deja de forzarlo, hasta que toques 'Prender ubicación'.">Apagar ubicación</button>
+            <button id="cmdHideIcon" title="Esconde el ícono del menú (la app sigue funcionando). Se reabre con *#*#74633277#*#* o 'Mostrar ícono'.">Ocultar ícono</button>
+            <button id="cmdUpdate" title="Instala la última versión de la app.">Actualizar app</button>
           </div>
-        </div>
-        <div class="sub" style="margin-top:6px">La persona entra al portal con ese email y ve solo lo que tildaste.</div>
-        ` : ''}
+
+          <div class="section-label">Comandos · Revertir / apagar</div>
+          <div class="cmds">
+            <button id="cmdStopAlarm" class="btn-danger" title="Apaga la alarma que está sonando.">Detener alarma</button>
+            <button id="cmdUnlock" title="Saca el bloqueo o el 'bloqueo extremo' y libera la pantalla.">Desbloquear</button>
+            <button id="cmdClose" title="Vuelve a activar el PIN/patrón del sistema que quitaste con 'Abrir'.">Pedir PIN</button>
+            <button id="cmdLocOn" title="Prende el GPS y vuelve a forzarlo encendido.">Prender ubicación</button>
+            <button id="cmdShowIcon" title="Vuelve a mostrar el ícono de la app en el menú.">Mostrar ícono</button>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px">
+            <label class="sub" style="margin:0" title="Duración del clip de audio. El máximo (1:30) es el más largo que entra en el plan gratis de Firebase.">🎙️ Audio:</label>
+            <select id="audioSecs" title="Elegí cuántos segundos grabar. 1:30 es el tope seguro." style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
+              <option value="8">8 segundos</option>
+              <option value="15">15 segundos</option>
+              <option value="30">30 segundos</option>
+              <option value="60" selected>1 minuto</option>
+              <option value="90">1 min 30 seg (máximo)</option>
+            </select>
+            <button id="cmdAudio" title="Graba audio del ambiente por la duración elegida y lo sube al panel.">Grabar audio</button>
+          </div>
+          <input id="lockMsg" placeholder="Mensaje (bloquear / mostrar / decir en la alarma)" style="margin-top:10px" />
+
+          ${isOwn ? `
+          <div class="section-label">Compartir acceso</div>
+          <div id="membersList"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <input id="shareEmail" type="email" placeholder="email de la persona" style="flex:1;min-width:160px" />
+            <select id="shareRole" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:9px">
+              <option value="viewer">Ver</option>
+              <option value="admin">Control total</option>
+            </select>
+            <button id="btnShare" class="btn-primary">Invitar</button>
+          </div>
+          <div id="shareSections" style="margin-top:10px">
+            <div class="sub" style="margin-bottom:6px">Qué puede ver (solo para el rol "Ver"):</div>
+            <div style="display:flex;flex-wrap:wrap;gap:12px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="status" checked> Estado y batería</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="location" checked> Ubicación</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="alerts" checked> Alertas</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="audio" checked> Audios grabados</label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:13px"><input type="checkbox" class="secChk" value="photos" checked> Fotos de intruso</label>
+            </div>
+          </div>
+          <div class="sub" style="margin-top:6px">La persona entra al portal con ese email y ve solo lo que tildaste.</div>
+          ` : ''}
+
+          <div class="section-label">Apariencia (skin)</div>
+          <div class="skins" id="skinPicker">
+            <button class="skin-opt" data-skin="oscuro"><span class="skin-dot" style="background:#161b22"></span>Oscuro</button>
+            <button class="skin-opt" data-skin="claro"><span class="skin-dot" style="background:#ffffff"></span>Claro</button>
+            <button class="skin-opt" data-skin="indigo"><span class="skin-dot" style="background:#8b7bff"></span>Índigo</button>
+          </div>
+        </div>` : ''}
       </div>`;
+
+    // --- Pestañas: mostrar un panel por vez ---
+    const _tabNames = Array.from(document.querySelectorAll('#detailWrap .tab')).map(t => t.dataset.tab);
+    function activateTab(name) {
+      document.querySelectorAll('#detailWrap .tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('#detailWrap .tabpanel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
+      if (name === 'ubicacion' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
+    }
+    document.querySelectorAll('#detailWrap .tab').forEach(t => t.onclick = () => activateTab(t.dataset.tab));
+    if (_tabNames.length) activateTab(_tabNames.includes('ubicacion') ? 'ubicacion' : _tabNames[0]);
+
+    // --- Skins (apariencia) ---
+    const curSkin = (function(){ try { return localStorage.getItem('skin'); } catch(e) { return null; } })() || 'oscuro';
+    document.querySelectorAll('#detailWrap .skin-opt').forEach(b => {
+      b.classList.toggle('sel', b.dataset.skin === curSkin);
+      b.onclick = () => applySkin(b.dataset.skin);
+    });
 
     const bKml = $("btnKml"); if (bKml) bKml.onclick = () => exportKml(); // disponible también en solo-lectura
     const bMaps = $("btnMapsLink"); if (bMaps) bMaps.onclick = () => shareMapsLink();
@@ -638,6 +722,10 @@
         sendCommand(ref, "LOCATION_OFF");
     };
     $("cmdUpdate").onclick = () => sendCommand(ref, "UPDATE");
+    // Accesos directos (los más usados)
+    { const q = $("qaLocate"); if (q) q.onclick = () => sendCommand(ref, "LOCATE"); }
+    { const q = $("qaPhoto"); if (q) q.onclick = () => sendCommand(ref, "PHOTO"); }
+    { const q = $("qaAudio"); if (q) q.onclick = () => sendCommand(ref, "AUDIO", { message: "60" }); }
     const bF = $("btnFollow"); if (bF) bF.onclick = () => toggleFollow(ref);
     const bR = $("btnRename"); if (bR) bR.onclick = () => {
       const actual = $("dName").textContent;
@@ -838,8 +926,8 @@
   function renderAlerts(items, ref) {
     const wrap = $("alertsWrap"), box = $("alerts");
     if (!box) return;
-    if (!items.length) { wrap.hidden = true; return; }
-    wrap.hidden = false;
+    if (wrap) wrap.hidden = false;
+    if (!items.length) { box.innerHTML = '<div class="empty" style="padding:16px">Sin alertas por ahora.</div>'; return; }
     box.innerHTML = "";
     items.forEach((a) => {
       const el = document.createElement("div");
@@ -947,9 +1035,9 @@ ${marks}</Document></kml>`;
   function renderAudios(items, ref) {
     const wrap = $("audiosWrap"), box = $("audios");
     if (!box) return;
-    if (!items.length) { wrap.hidden = true; return; }
-    wrap.hidden = false;
+    if (wrap) wrap.hidden = false;
     const cnt = $("audiosCount"); if (cnt) cnt.textContent = items.length;
+    if (!items.length) { box.innerHTML = '<div class="empty" style="padding:16px">Todavía no hay audios grabados.</div>'; return; }
     box.innerHTML = "";
     let lastDay = null, grp = null, firstDay = true;
     items.forEach((a) => {
@@ -986,9 +1074,9 @@ ${marks}</Document></kml>`;
   function renderPhotos(items, ref) {
     const wrap = $("photosWrap"), box = $("photos");
     if (!box) return;
-    if (!items.length) { wrap.hidden = true; return; }
-    wrap.hidden = false;
+    if (wrap) wrap.hidden = false;
     const cnt = $("photosCount"); if (cnt) cnt.textContent = items.length;
+    if (!items.length) { box.innerHTML = '<div class="empty" style="padding:16px">Todavía no hay fotos de intruso.</div>'; return; }
     box.innerHTML = "";
     let lastDay = null, grp = null, firstDay = true;
     items.forEach((a) => {
