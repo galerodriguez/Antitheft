@@ -157,13 +157,16 @@
     .brand svg { width: 22px; height: 22px; }
     .bar { gap: 8px; padding-block: 11px; }
     #map { height: 260px; }
-    /* Botones de comando: ocupan el ancho disponible en 2 columnas */
-    .cmds { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .cmds button { width: 100%; }
+    /* Botones de comando: compactos, en 2 columnas, para que el panel sea más cómodo */
+    .cmds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .cmds button { width: 100%; padding: 8px 6px; font-size: 13px; }
+    .section-label { margin-top: 12px; margin-bottom: 5px; }
+    .toggle-row { padding: 10px 0; }
+    #map { height: 220px; }
     .login-card { padding: 22px; }
   }
   @media (max-width: 360px) {
-    .cmds { grid-template-columns: 1fr; }
+    .cmds { gap: 6px; }
   }
 </style>
 
@@ -182,7 +185,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.9.8</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.9.9</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -545,7 +548,7 @@
             <option value="8">8 segundos</option>
             <option value="15">15 segundos</option>
             <option value="30">30 segundos</option>
-            <option value="60">1 minuto</option>
+            <option value="60" selected>1 minuto</option>
             <option value="90">1 min 30 seg (máximo)</option>
           </select>
           <button id="cmdAudio" title="Graba audio del ambiente por la duración elegida y lo sube al panel.">Grabar audio</button>
