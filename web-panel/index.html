@@ -63,8 +63,13 @@
 
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
+  html, body { max-width: 100%; overflow-x: hidden; }
   body { margin: 0; background: var(--bg); color: var(--text);
     font-family: "Manrope", system-ui, -apple-system, sans-serif; line-height: 1.5; }
+  /* Las columnas del grid deben poder achicarse para no desbordar a la derecha. */
+  .app > * { min-width: 0; }
+  .panel { min-width: 0; }
+  .cmds button { min-width: 0; }
   .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
   h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 700; }
   a { color: var(--primary); }
@@ -143,10 +148,12 @@
   .chip.live-off { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--border)); }
   .cmds { display: flex; flex-wrap: wrap; gap: 10px; }
   #map { height: 300px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-top: 4px;
-    background: var(--card-2); position: sticky; top: 8px; z-index: 5; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+    background: var(--card-2); box-shadow: 0 4px 14px rgba(0,0,0,.18); }
   .leaflet-container { font-family: inherit; }
 
-  .history { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  /* El historial scrollea dentro de su propia caja: así el mapa de arriba queda siempre visible. */
+  .history { margin-top: 12px; border: 1px solid var(--border); border-radius: 12px; overflow-y: auto;
+    -webkit-overflow-scrolling: touch; max-height: 46vh; }
   .hist-day { padding: 8px 14px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
     letter-spacing: .05em; color: var(--muted); background: var(--card-2);
     border-top: 1px solid var(--border); }
@@ -218,7 +225,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.0</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.2</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -670,7 +677,11 @@
       document.querySelectorAll('#detailWrap .tabpanel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
       if (name === 'ubicacion' && map) setTimeout(() => { try { map.invalidateSize(); } catch (e) {} }, 60);
     }
-    document.querySelectorAll('#detailWrap .tab').forEach(t => t.onclick = () => activateTab(t.dataset.tab));
+    // Interruptor: tocar una pestaña la abre; tocarla de nuevo la cierra (oculta su panel).
+    document.querySelectorAll('#detailWrap .tab').forEach(t => t.onclick = () => {
+      if (t.classList.contains('active')) activateTab('__none__');
+      else activateTab(t.dataset.tab);
+    });
     if (_tabNames.length) activateTab(_tabNames.includes('ubicacion') ? 'ubicacion' : _tabNames[0]);
 
     // --- Skins (apariencia) ---
