@@ -230,7 +230,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.4</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.5</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -312,6 +312,7 @@
   let ownerDevices = {}, deviceUnsubs = [], membersUnsub = null;
   let allHistPts = [], liveHistPts = [];
   let liveAudios = [], livePhotos = [];   // últimos audios/fotos en vivo (para volver de "ver por día")
+  let audioView = "live", photoView = "live";   // "live" | "day" | "fav" — qué está mostrando cada panel
 
   // --- Permisos por sección (para acceso compartido) ---
   function fullSections() { return { status: true, location: true, alerts: true, audio: true, photos: true }; }
@@ -521,9 +522,10 @@
           const photos = selSections.photos ? all.filter(a => a.type === "INTRUDER_PHOTO") : [];
           liveAudios = audios; livePhotos = photos;
           renderAlerts(alerts, ref);
-          // Si hay un día elegido en Audios/Fotos, no pisamos esa vista con lo reciente.
-          if (!($("audioDate") && $("audioDate").value)) renderAudios(audios, ref);
-          if (!($("photoDate") && $("photoDate").value)) renderPhotos(photos, ref);
+          // Solo refrescamos lo reciente si el panel está en vista "en vivo"
+          // (no si está mostrando un día elegido o los favoritos).
+          if (audioView === "live") renderAudios(audios, ref);
+          if (photoView === "live") renderPhotos(photos, ref);
         }, () => {});
     }
   }
@@ -714,11 +716,11 @@
     const hd = $("histDate"); if (hd) hd.onchange = () => { if (hd.value) loadDay(ref, hd.value); else renderHistory(liveHistPts); };
     const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; renderHistory(liveHistPts); };
     // Calendario de Audios
-    const ad = $("audioDate"); if (ad) { ad.max = toDateInput(Date.now()); ad.onchange = () => { if (ad.value) loadMediaDay(ref, "audio", ad.value); else renderAudios(liveAudios, ref); }; }
-    const adAll = $("audioAllDays"); if (adAll) adAll.onclick = () => { if ($("audioDate")) $("audioDate").value = ""; renderAudios(liveAudios, ref); };
+    const ad = $("audioDate"); if (ad) { ad.max = toDateInput(Date.now()); ad.onchange = () => { if (ad.value) { audioView = "day"; loadMediaDay(ref, "audio", ad.value); } else { audioView = "live"; renderAudios(liveAudios, ref); } }; }
+    const adAll = $("audioAllDays"); if (adAll) adAll.onclick = () => { audioView = "live"; if ($("audioDate")) $("audioDate").value = ""; renderAudios(liveAudios, ref); };
     // Calendario de Fotos
-    const pd = $("photoDate"); if (pd) { pd.max = toDateInput(Date.now()); pd.onchange = () => { if (pd.value) loadMediaDay(ref, "photo", pd.value); else renderPhotos(livePhotos, ref); }; }
-    const pdAll = $("photoAllDays"); if (pdAll) pdAll.onclick = () => { if ($("photoDate")) $("photoDate").value = ""; renderPhotos(livePhotos, ref); };
+    const pd = $("photoDate"); if (pd) { pd.max = toDateInput(Date.now()); pd.onchange = () => { if (pd.value) { photoView = "day"; loadMediaDay(ref, "photo", pd.value); } else { photoView = "live"; renderPhotos(livePhotos, ref); } }; }
+    const pdAll = $("photoAllDays"); if (pdAll) pdAll.onclick = () => { photoView = "live"; if ($("photoDate")) $("photoDate").value = ""; renderPhotos(livePhotos, ref); };
     const rSel = $("shareRole"); if (rSel) rSel.onchange = () => { const ss = $("shareSections"); if (ss) ss.style.opacity = (rSel.value === "viewer") ? "1" : "0.4"; };
     if (admin && isOwn) { renderMembers(); $("btnShare").onclick = () => inviteMember(); }
     if (!admin) return; // solo lectura: no cableamos comandos ni toggles
@@ -1071,6 +1073,7 @@ ${marks}</Document></kml>`;
     const bar = document.createElement("div");
     bar.className = "media-bar";
     const bSel = document.createElement("button"); bSel.textContent = "☑️ Seleccionar";
+    const bFav = document.createElement("button"); bFav.textContent = "⭐ Ver favoritos";
     const bAll = document.createElement("button"); bAll.textContent = "⬇️ Descargar todo";
     const bDel = document.createElement("button"); bDel.className = "btn-danger"; bDel.style.display = "none";
     const refreshCount = () => {
@@ -1085,19 +1088,21 @@ ${marks}</Document></kml>`;
       if (on) refreshCount();
       else box.querySelectorAll(".media-chk").forEach(c => c.checked = false);
     };
-    bAll.onclick = () => downloadAllMedia(kind, items);
+    bFav.onclick = () => loadFavorites(ref, kind);
+    bAll.onclick = () => downloadAllMedia(kind, items, ref);
     bDel.onclick = () => {
       const ids = Array.from(box.querySelectorAll(".media-chk:checked")).map(c => c.dataset.id);
       if (!ids.length) { window.alert("No seleccionaste ninguno."); return; }
       if (!window.confirm("¿Eliminar " + ids.length + " elemento(s)? No se puede deshacer.")) return;
       bulkDeleteMedia(ref, ids);
     };
-    bar.appendChild(bSel); bar.appendChild(bAll); bar.appendChild(bDel);
+    bar.appendChild(bSel); bar.appendChild(bFav); bar.appendChild(bAll); bar.appendChild(bDel);
     box.appendChild(bar);
   }
-  // Descarga uno por uno (con pausa para que el navegador no bloquee la tanda).
-  function downloadAllMedia(kind, items) {
+  // Descarga los archivos uno por uno (con pausa) + un CSV con toda la información de cada uno.
+  function downloadAllMedia(kind, items, ref) {
     if (!items || !items.length) { window.alert("No hay nada para descargar."); return; }
+    downloadInfoCsv(kind, items);
     let i = 0;
     (function next() {
       if (i >= items.length) return;
@@ -1106,6 +1111,65 @@ ${marks}</Document></kml>`;
       else if (kind === "photo" && a.photo) downloadPhoto(a.photo, a.ts);
       setTimeout(next, 450);
     })();
+  }
+  // Genera un archivo .csv (abre en Excel) con todos los datos de los elementos descargados.
+  function downloadInfoCsv(kind, items) {
+    const dev = ($("dName") && $("dName").textContent) || "Dispositivo";
+    const tipo = kind === "audio" ? "Audio" : "Foto de intruso";
+    const esc = (v) => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const rows = [["Dispositivo", "Tipo", "Fecha", "Hora", "Favorito", "Archivo", "ID"]];
+    items.forEach(a => {
+      const d = a.ts ? new Date(a.ts) : null;
+      const nombre = (kind === "audio" ? "audio_" : "intruso_") +
+        new Date(a.ts || Date.now()).toISOString().replace(/[:.]/g, "-") + (kind === "audio" ? ".m4a" : ".jpg");
+      rows.push([dev, tipo, d ? toDateInput(a.ts) : "", d ? d.toLocaleTimeString() : "", a.fav ? "Sí" : "No", nombre, a._id || ""]);
+    });
+    const csv = "﻿" + rows.map(r => r.map(esc).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "informacion_" + (kind === "audio" ? "audios" : "fotos") + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  // Carga TODOS los favoritos (de todos los días) del tipo pedido y los muestra.
+  async function loadFavorites(ref, kind) {
+    const box = kind === "audio" ? $("audios") : $("photos");
+    if (box) box.innerHTML = '<div class="empty" style="padding:20px">Buscando favoritos…</div>';
+    const wantType = kind === "audio" ? "AUDIO" : "INTRUDER_PHOTO";
+    if (kind === "audio") audioView = "fav"; else photoView = "fav";
+    try {
+      const snap = await ref.collection("alerts").where("fav", "==", true).limit(500).get();
+      const items = [];
+      snap.forEach(d => { const x = d.data(); if (x.type === wantType) items.push(Object.assign({ _id: d.id }, x)); });
+      items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      if (!items.length) {
+        if (box) box.innerHTML = '<div class="empty" style="padding:20px">Todavía no marcaste ' +
+          (kind === "audio" ? "audios" : "fotos") + ' como favoritos. Tocá la ⭐ en los que quieras guardar.</div>';
+        return;
+      }
+      if (kind === "audio") renderAudios(items, ref); else renderPhotos(items, ref);
+    } catch (e) {
+      if (box) box.innerHTML = '<div class="empty" style="padding:20px">No se pudieron cargar los favoritos: ' + (e.message || e) + '</div>';
+    }
+  }
+  // Botón ⭐ para marcar/desmarcar un elemento como favorito (se guarda en la base).
+  function favBtn(ref, a) {
+    const b = document.createElement("button");
+    const paint = () => { b.textContent = a.fav ? "★ Favorito" : "☆ Favorito"; b.style.color = a.fav ? "#f0b000" : ""; };
+    paint();
+    b.onclick = () => {
+      if (!ref || !a._id) return;
+      const nv = !a.fav; a.fav = nv; paint();
+      ref.collection("alerts").doc(a._id).set({ fav: nv }, { merge: true })
+        .then(() => {
+          const kind = a.type === "AUDIO" ? "audio" : "photo";
+          const v = kind === "audio" ? audioView : photoView;
+          if (v === "fav") loadFavorites(ref, kind);   // si estoy viendo favoritos, refresco
+        })
+        .catch(() => { a.fav = !nv; paint(); window.alert("No se pudo guardar el favorito."); });
+    };
+    return b;
   }
   // Borra en lote de Firestore.
   function bulkDeleteMedia(ref, ids) {
@@ -1160,7 +1224,7 @@ ${marks}</Document></kml>`;
         if (ref && a._id && window.confirm("¿Eliminar este audio? No se puede deshacer."))
           ref.collection("alerts").doc(a._id).delete().catch(() => {});
       };
-      acts.appendChild(bDl); acts.appendChild(bDel);
+      acts.appendChild(favBtn(ref, a)); acts.appendChild(bDl); acts.appendChild(bDel);
       row.appendChild(acts);
       grp.appendChild(row);
     });
@@ -1202,7 +1266,7 @@ ${marks}</Document></kml>`;
         if (ref && a._id && window.confirm("¿Eliminar esta foto? No se puede deshacer."))
           ref.collection("alerts").doc(a._id).delete().catch(() => {});
       };
-      acts.appendChild(bView); acts.appendChild(bDl); acts.appendChild(bDel);
+      acts.appendChild(bView); acts.appendChild(favBtn(ref, a)); acts.appendChild(bDl); acts.appendChild(bDel);
       meta.appendChild(time); meta.appendChild(acts);
       row.appendChild(img); row.appendChild(meta);
       grp.appendChild(row);
