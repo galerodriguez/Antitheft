@@ -230,7 +230,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.3</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.4</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -311,6 +311,7 @@
   let myUid = null, myEmail = null, selRole = "admin", selOwner = null, selSections = null;
   let ownerDevices = {}, deviceUnsubs = [], membersUnsub = null;
   let allHistPts = [], liveHistPts = [];
+  let liveAudios = [], livePhotos = [];   // últimos audios/fotos en vivo (para volver de "ver por día")
 
   // --- Permisos por sección (para acceso compartido) ---
   function fullSections() { return { status: true, location: true, alerts: true, audio: true, photos: true }; }
@@ -518,9 +519,11 @@
             ? all.filter(a => a.type !== "INTRUDER_PHOTO" && a.type !== "AUDIO") : [];
           const audios = selSections.audio ? all.filter(a => a.type === "AUDIO") : [];
           const photos = selSections.photos ? all.filter(a => a.type === "INTRUDER_PHOTO") : [];
+          liveAudios = audios; livePhotos = photos;
           renderAlerts(alerts, ref);
-          renderAudios(audios, ref);
-          renderPhotos(photos, ref);
+          // Si hay un día elegido en Audios/Fotos, no pisamos esa vista con lo reciente.
+          if (!($("audioDate") && $("audioDate").value)) renderAudios(audios, ref);
+          if (!($("photoDate") && $("photoDate").value)) renderPhotos(photos, ref);
         }, () => {});
     }
   }
@@ -576,6 +579,11 @@
         <div class="tabpanel" data-panel="audios">
           <div id="audiosWrap">
             <div class="section-label">Audios grabados <span id="audiosCount" class="chip" style="margin-left:6px"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0">
+              <label class="sub" style="margin:0">📅 Día:</label>
+              <input type="date" id="audioDate" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
+              <button id="audioAllDays" class="btn-ghost" style="padding:8px 12px">Ver recientes</button>
+            </div>
             <div id="audios" class="history"></div>
           </div>
         </div>` : ''}
@@ -584,6 +592,11 @@
         <div class="tabpanel" data-panel="fotos">
           <div id="photosWrap">
             <div class="section-label">Fotos de intruso <span id="photosCount" class="chip" style="margin-left:6px"></span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0">
+              <label class="sub" style="margin:0">📅 Día:</label>
+              <input type="date" id="photoDate" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
+              <button id="photoAllDays" class="btn-ghost" style="padding:8px 12px">Ver recientes</button>
+            </div>
             <div id="photos" class="history"></div>
           </div>
         </div>` : ''}
@@ -700,6 +713,12 @@
     const bMaps = $("btnMapsLink"); if (bMaps) bMaps.onclick = () => shareMapsLink();
     const hd = $("histDate"); if (hd) hd.onchange = () => { if (hd.value) loadDay(ref, hd.value); else renderHistory(liveHistPts); };
     const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; renderHistory(liveHistPts); };
+    // Calendario de Audios
+    const ad = $("audioDate"); if (ad) { ad.max = toDateInput(Date.now()); ad.onchange = () => { if (ad.value) loadMediaDay(ref, "audio", ad.value); else renderAudios(liveAudios, ref); }; }
+    const adAll = $("audioAllDays"); if (adAll) adAll.onclick = () => { if ($("audioDate")) $("audioDate").value = ""; renderAudios(liveAudios, ref); };
+    // Calendario de Fotos
+    const pd = $("photoDate"); if (pd) { pd.max = toDateInput(Date.now()); pd.onchange = () => { if (pd.value) loadMediaDay(ref, "photo", pd.value); else renderPhotos(livePhotos, ref); }; }
+    const pdAll = $("photoAllDays"); if (pdAll) pdAll.onclick = () => { if ($("photoDate")) $("photoDate").value = ""; renderPhotos(livePhotos, ref); };
     const rSel = $("shareRole"); if (rSel) rSel.onchange = () => { const ss = $("shareSections"); if (ss) ss.style.opacity = (rSel.value === "viewer") ? "1" : "0.4"; };
     if (admin && isOwn) { renderMembers(); $("btnShare").onclick = () => inviteMember(); }
     if (!admin) return; // solo lectura: no cableamos comandos ni toggles
@@ -1223,6 +1242,25 @@ ${marks}</Document></kml>`;
       drawHistory();
     } catch (e) {
       if (h) h.innerHTML = '<div class="empty" style="padding:20px">No se pudo cargar ese día: ' + (e.message || e) + '</div>';
+    }
+  }
+  // Consulta en la base TODOS los audios/fotos de un día específico (no solo los recientes).
+  async function loadMediaDay(ref, kind, dateStr) {
+    const box = kind === "audio" ? $("audios") : $("photos");
+    if (box) box.innerHTML = '<div class="empty" style="padding:20px">Buscando ' + (kind === "audio" ? "audios" : "fotos") + ' de ese día…</div>';
+    const p = dateStr.split("-").map(Number);
+    const start = new Date(p[0], p[1] - 1, p[2], 0, 0, 0, 0).getTime();
+    const end = new Date(p[0], p[1] - 1, p[2], 23, 59, 59, 999).getTime();
+    const wantType = kind === "audio" ? "AUDIO" : "INTRUDER_PHOTO";
+    try {
+      const snap = await ref.collection("alerts")
+        .where("ts", ">=", start).where("ts", "<=", end)
+        .orderBy("ts", "desc").limit(500).get();
+      const items = [];
+      snap.forEach(d => { const x = d.data(); if (x.type === wantType) items.push(Object.assign({ _id: d.id }, x)); });
+      if (kind === "audio") renderAudios(items, ref); else renderPhotos(items, ref);
+    } catch (e) {
+      if (box) box.innerHTML = '<div class="empty" style="padding:20px">No se pudo cargar ese día: ' + (e.message || e) + '</div>';
     }
   }
   function drawHistory() {
