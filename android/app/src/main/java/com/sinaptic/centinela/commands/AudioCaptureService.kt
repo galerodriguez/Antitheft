@@ -35,14 +35,20 @@ class AudioCaptureService : Service() {
     private var recorder: MediaRecorder? = null
     private var outFile: File? = null
     private var requestId: String = "audio"
+    private var currentRid: String = "audio"
     private var finished = false
+    private var clipSeconds = 8
+    private var remaining = 1          // clips que faltan grabar en la tanda
+    private var totalCount = 1         // total de clips pedidos
+    private var burstCancelled = false // true si pidieron STOP
     private val handler = Handler(Looper.getMainLooper())
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
-            // Pedido de detener una grabación manual en curso.
+            // Pedido de detener una grabación (y cancelar la tanda si hay).
             if (intent?.getBooleanExtra(EXTRA_STOP, false) == true) {
-                if (recorder != null) { finishRecording(requestId) }
+                burstCancelled = true; remaining = 0
+                if (recorder != null) { finishRecording() }
                 else { runCatching { stopSelf() } }
                 return START_NOT_STICKY
             }
@@ -51,18 +57,29 @@ class AudioCaptureService : Service() {
                 != PackageManager.PERMISSION_GRANTED) {
                 Log.w(TAG, "Sin permiso de micrófono"); stopSelf(); return START_NOT_STICKY
             }
-            // Si ya hay una grabación en curso, ignoramos el nuevo inicio.
+            // Si ya hay una grabación/tanda en curso, ignoramos el nuevo inicio.
             if (recorder != null) return START_NOT_STICKY
-            val secs = intent?.getIntExtra(EXTRA_SECONDS, 8) ?: 8
+            clipSeconds = intent?.getIntExtra(EXTRA_SECONDS, 8) ?: 8
             requestId = intent?.getStringExtra(EXTRA_REQUEST) ?: "audio"
-            startRecording(secs, requestId)
+            val reps = intent?.getIntExtra(EXTRA_REPEAT, 1) ?: 1
+            totalCount = reps.coerceIn(1, MAX_BURST)
+            remaining = totalCount
+            burstCancelled = false
+            startClip()
         } catch (e: Throwable) {
             Log.e(TAG, "Fallo al grabar", e); runCatching { stopSelf() }
         }
         return START_NOT_STICKY
     }
 
-    private fun startRecording(seconds: Int, requestId: String) {
+    /** Arranca el próximo clip de la tanda (numerado si son varios). */
+    private fun startClip() {
+        val idx = totalCount - remaining + 1
+        currentRid = if (totalCount > 1) "$requestId ($idx/$totalCount)" else requestId
+        startRecording(clipSeconds)
+    }
+
+    private fun startRecording(seconds: Int) {
         finished = false
         val file = File(cacheDir, "amb_${System.currentTimeMillis()}.m4a")
         outFile = file
@@ -76,36 +93,37 @@ class AudioCaptureService : Service() {
         rec.setAudioSamplingRate(44100)
         rec.setOutputFile(file.absolutePath)
         rec.prepare(); rec.start()
-        if (seconds > 0) {
-            // Duración fija (con tope de seguridad por el límite de Firestore).
-            val capped = seconds.coerceAtMost(MANUAL_MAX_S)
-            Log.i(TAG, "Grabando ${capped}s…")
-            handler.postDelayed({ finishRecording(requestId) }, capped * 1000L)
-        } else {
-            // Manual: graba hasta STOP, pero corta solo a los MANUAL_MAX_S por el límite de tamaño.
-            Log.i(TAG, "Grabando en modo manual (tope ${MANUAL_MAX_S}s)…")
-            handler.postDelayed({ finishRecording(requestId) }, MANUAL_MAX_S * 1000L)
-        }
+        // Duración fija (con tope de seguridad por el límite de Firestore). seconds<=0 = manual.
+        val capped = if (seconds > 0) seconds.coerceAtMost(MANUAL_MAX_S) else MANUAL_MAX_S
+        Log.i(TAG, "Grabando ${capped}s… ($currentRid)")
+        handler.postDelayed({ finishRecording() }, capped * 1000L)
     }
 
-    private fun finishRecording(requestId: String) {
+    private fun finishRecording() {
         if (finished) return
         finished = true
         handler.removeCallbacksAndMessages(null)
         runCatching { recorder?.stop() }
         runCatching { recorder?.release() }
         recorder = null
+        val rid = currentRid
         runCatching {
             val f = outFile
             if (f != null && f.exists() && f.length() > 0) {
                 val b64 = "data:audio/mp4;base64," +
                     Base64.encodeToString(f.readBytes(), Base64.NO_WRAP)
-                if (b64.length < 900_000) FirebaseSync(applicationContext).uploadAudio(b64, requestId)
+                if (b64.length < 900_000) FirebaseSync(applicationContext).uploadAudio(b64, rid)
                 else Log.w(TAG, "Audio demasiado grande para Firestore")
                 f.delete()
             }
         }
-        runCatching { stopSelf() }
+        remaining -= 1
+        if (!burstCancelled && remaining > 0) {
+            // Pausa corta antes del próximo clip: deja liberar el micrófono y empezar la subida.
+            handler.postDelayed({ startClip() }, GAP_MS)
+        } else {
+            runCatching { stopSelf() }
+        }
     }
 
     private fun startForegroundSafe(): Boolean {
@@ -138,13 +156,19 @@ class AudioCaptureService : Service() {
         const val EXTRA_SECONDS = "seconds"
         const val EXTRA_REQUEST = "request_id"
         const val EXTRA_STOP = "stop"
+        const val EXTRA_REPEAT = "repeat"
         // Tope de seguridad: ~90 s a 64 kbps entra en el límite de ~900 KB de Firestore (plan gratis).
         const val MANUAL_MAX_S = 90
+        // Máximo de clips en una tanda (cada uno se sube por separado).
+        const val MAX_BURST = 10
+        // Pausa entre clips de una tanda.
+        private const val GAP_MS = 1200L
 
-        /** Inicia una grabación. seconds > 0 = fija; seconds <= 0 = manual (hasta stop). */
-        fun start(context: Context, seconds: Int = 8, requestId: String = "audio") {
+        /** Inicia una grabación. seconds > 0 = fija; seconds <= 0 = manual (hasta stop). repeat = cantidad de clips seguidos. */
+        fun start(context: Context, seconds: Int = 8, requestId: String = "audio", repeat: Int = 1) {
             val i = Intent(context, AudioCaptureService::class.java)
                 .putExtra(EXTRA_SECONDS, seconds).putExtra(EXTRA_REQUEST, requestId)
+                .putExtra(EXTRA_REPEAT, repeat)
             ContextCompat.startForegroundService(context, i)
         }
 

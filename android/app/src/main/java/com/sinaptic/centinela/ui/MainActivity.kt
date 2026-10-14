@@ -265,7 +265,7 @@ class MainActivity : AppCompatActivity() {
             "KIOSK" -> LostMessageActivity.show(this, message, kiosk = true)
             "OPEN" -> DeviceOwnerManager.setKeyguardDisabled(this, true)
             "CLOSE" -> DeviceOwnerManager.setKeyguardDisabled(this, false)
-            "AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.start(this, audioSeconds(message), "remote")
+            "AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.start(this, audioSeconds(message), "remote", audioRepeat(message))
             "STOP_AUDIO" -> com.sinaptic.centinela.commands.AudioCaptureService.stop(this)
             "HIDE_ICON" -> com.sinaptic.centinela.admin.AppIcon.hide(this)
             "SHOW_ICON" -> com.sinaptic.centinela.admin.AppIcon.show(this)
@@ -286,11 +286,19 @@ class MainActivity : AppCompatActivity() {
         toast("Comando del portal: $type")
     }
 
-    // "message" del comando AUDIO: número = segundos fijos; "manual"/"0"/vacío = manual.
+    // "message" del comando AUDIO: "60" = 60 s; "60x5" = 60 s cinco veces; "manual" = hasta stop.
     private fun audioSeconds(message: String?): Int {
         val m = message?.trim()?.lowercase() ?: return 8
-        if (m == "manual") return 0
-        return m.toIntOrNull() ?: 8
+        val base = if (m.contains('x')) m.substringBefore('x') else m
+        if (base == "manual") return 0
+        return base.toIntOrNull() ?: 8
+    }
+
+    // Cantidad de clips seguidos ("60x5" -> 5). Por defecto 1.
+    private fun audioRepeat(message: String?): Int {
+        val m = message?.trim()?.lowercase() ?: return 1
+        if (!m.contains('x')) return 1
+        return m.substringAfter('x').toIntOrNull()?.coerceIn(1, 10) ?: 1
     }
 
     /** Bloquea la pantalla y muestra una pantalla de "teléfono protegido" con el mensaje. */

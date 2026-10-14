@@ -1,6 +1,6 @@
 {
-  "versionCode": 20,
-  "versionName": "0.9.6",
+  "versionCode": 21,
+  "versionName": "0.9.7",
   "apkUrl": "https://github.com/galerodriguez/Antitheft/releases/download/latest/app-debug.apk",
-  "notes": "Tocar la notificación permanente abre la app (vía segura para reentrar aunque el ícono esté oculto). Prender/apagar ubicación, ícono de carga, desplegables por día, audio con tope y forzado de GPS por root."
+  "notes": "Nuevo: grabar varios audios de 1 minuto seguidos (tanda de hasta 5). Favoritos de audios/fotos, calendario por día y descarga con archivo de información en el panel."
 }
