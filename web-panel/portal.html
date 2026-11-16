@@ -161,7 +161,8 @@
      y vive en su propia columna, así nunca se superpone ni descoloca la fila. */
   .media-row { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); }
   .media-row:first-child { border-top: none; }
-  .media-row > .media-chk { display: none; flex: none; margin-left: 12px; transform: scale(1.3); accent-color: var(--primary); }
+  /* width/padding:auto anulan la regla global `input{width:100%}` que, si no, estiraba el checkbox a toda la fila. */
+  .media-row > .media-chk { display: none; flex: none; width: auto; min-width: 0; height: auto; padding: 0; margin-left: 12px; transform: scale(1.3); accent-color: var(--primary); }
   .selmode .media-row > .media-chk { display: block; }
   .media-row > .photo-item, .media-row > .hist-item { flex: 1; min-width: 0; border-top: none; }
   .hist-day { padding: 8px 14px; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
@@ -235,7 +236,7 @@
     <div class="brand">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Z"/></svg>
       Antitheft
-      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.8</span>
+      <span style="font-size:11px;font-weight:600;color:var(--muted);margin-left:8px">v0.10.10</span>
     </div>
     <div class="spacer"></div>
     <span id="who" class="who" hidden></span>
@@ -613,12 +614,19 @@
           <div class="cmds" style="margin-bottom:10px">
             ${admin ? '<button id="btnFollow">▶ Seguir en vivo</button>' : ''}
             <button id="btnMapsLink" class="btn-primary" title="Copia y abre un link de Google Maps con la última ubicación, para compartir.">📍 Link de Google Maps</button>
-            <button id="btnKml" title="Descarga el recorrido del día como archivo KML (Google Earth / Maps).">Exportar recorrido (KML)</button>
+            <button id="btnKml" title="Descarga el recorrido que estás viendo (el día elegido, o el reciente) como KML. Para varias fechas, usá 'Exportar rango' de abajo.">Exportar recorrido (KML)</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
             <label class="sub" style="margin:0">📅 Día:</label>
             <input type="date" id="histDate" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
             <button id="btnAllDays" class="btn-ghost" style="padding:8px 12px">Ver todos</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+            <label class="sub" style="margin:0">🗺️ Exportar rango:</label>
+            <input type="date" id="kmlFrom" title="Desde" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
+            <span class="sub" style="margin:0">a</span>
+            <input type="date" id="kmlTo" title="Hasta" style="border-radius:10px;border:1px solid var(--border);background:var(--card-2);color:var(--text);padding:8px" />
+            <button id="btnKmlRange" class="btn-ghost" style="padding:8px 12px">Exportar KML del rango</button>
           </div>
           <div id="map"></div>
           <div id="history" class="history"></div>
@@ -724,6 +732,7 @@
     });
 
     const bKml = $("btnKml"); if (bKml) bKml.onclick = () => exportKml(); // disponible también en solo-lectura
+    const bKmlR = $("btnKmlRange"); if (bKmlR) { const today = toDateInput(Date.now()); const kf = $("kmlFrom"), kt = $("kmlTo"); if (kf) kf.max = today; if (kt) kt.max = today; bKmlR.onclick = () => exportKmlRange(ref); }
     const bMaps = $("btnMapsLink"); if (bMaps) bMaps.onclick = () => shareMapsLink();
     const hd = $("histDate"); if (hd) hd.onchange = () => { if (hd.value) loadDay(ref, hd.value); else renderHistory(liveHistPts); };
     const bAll = $("btnAllDays"); if (bAll) bAll.onclick = () => { if ($("histDate")) $("histDate").value = ""; renderHistory(liveHistPts); };
@@ -1050,9 +1059,10 @@
     window.open(url, "_blank");
   }
 
-  function exportKml() {
-    if (!lastPts.length) { window.alert("No hay ubicaciones para exportar todavía."); return; }
-    const asc = [...lastPts].reverse();
+  // Arma el KML a partir de una lista de puntos (más viejo→más nuevo) y lo descarga.
+  function downloadKml(pts, fileName) {
+    if (!pts || !pts.length) { window.alert("No hay ubicaciones para exportar en ese rango."); return; }
+    const asc = [...pts].sort((a, b) => (a.ts || 0) - (b.ts || 0));
     const line = asc.map(p => `${p.lng},${p.lat},0`).join(" ");
     const marks = asc.map(p =>
       `<Placemark><name>${p.ts ? new Date(p.ts).toLocaleString() : ""}</name>` +
@@ -1064,9 +1074,39 @@ ${marks}</Document></kml>`;
     const blob = new Blob([kml], { type: "application/vnd.google-earth.kml+xml" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "recorrido_" + new Date().toISOString().slice(0, 10) + ".kml";
+    a.download = fileName;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  // Exporta lo que se está viendo (un día elegido, o el recorrido reciente). Nombra el archivo según el día.
+  function exportKml() {
+    if (!lastPts.length) { window.alert("No hay ubicaciones para exportar todavía."); return; }
+    const sel = $("histDate") && $("histDate").value;
+    downloadKml(lastPts, "recorrido_" + (sel || new Date().toISOString().slice(0, 10)) + ".kml");
+  }
+  // Exporta el recorrido entre dos fechas (consulta la base por todo ese período).
+  async function exportKmlRange(ref) {
+    if (!ref) { window.alert("No hay dispositivo seleccionado."); return; }
+    const f = $("kmlFrom") && $("kmlFrom").value, t = $("kmlTo") && $("kmlTo").value;
+    if (!f || !t) { window.alert("Elegí la fecha de inicio y la de fin."); return; }
+    const from = f <= t ? f : t, to = f <= t ? t : f;   // por si las invierten
+    const pf = from.split("-").map(Number), pt = to.split("-").map(Number);
+    const start = new Date(pf[0], pf[1] - 1, pf[2], 0, 0, 0, 0).getTime();
+    const end = new Date(pt[0], pt[1] - 1, pt[2], 23, 59, 59, 999).getTime();
+    const btn = $("btnKmlRange"); const prev = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Buscando…"; }
+    try {
+      const snap = await ref.collection("locations")
+        .where("ts", ">=", start).where("ts", "<=", end)
+        .orderBy("ts", "asc").limit(10000).get();
+      const pts = [];
+      snap.forEach(d => { const x = d.data(); if (x.lat != null) pts.push(x); });
+      downloadKml(pts, "recorrido_" + from + "_a_" + to + ".kml");
+    } catch (e) {
+      window.alert("No se pudo exportar el rango: " + (e.message || e));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = prev; }
+    }
   }
   function downloadPhoto(src, ts) {
     const a = document.createElement("a");
